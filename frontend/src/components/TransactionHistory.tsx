@@ -150,26 +150,14 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
     filter === 'all' || tx.status === filter
   );
 
-  const openEtherscan = (txHash: string) => {
-    if (!txHash) {
-      console.error('❌ No ETH transaction hash provided');
-      return;
-    }
+  const getEtherscanUrl = (txHash: string): string => {
     const base = isTestnet() ? 'https://sepolia.etherscan.io' : 'https://etherscan.io';
-    const url = `${base}/tx/${txHash}`;
-    console.log('🔗 Opening Etherscan:', url);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    return `${base}/tx/${txHash}`;
   };
 
-  const openStellarExplorer = (txHash: string) => {
-    if (!txHash) {
-      console.error('❌ No Stellar transaction hash provided');
-      return;
-    }
+  const getStellarExplorerUrl = (txHash: string): string => {
     const network = isTestnet() ? 'testnet' : 'public';
-    const url = `https://stellar.expert/explorer/${network}/tx/${txHash}`;
-    console.log('🔗 Opening Stellar Explorer:', url);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    return `https://stellar.expert/explorer/${network}/tx/${txHash}`;
   };
 
   return (
@@ -242,22 +230,26 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
 
                 <div className="flex items-center gap-2">
                   {tx.ethTxHash && isRealHash(tx.ethTxHash) && (
-                    <button
-                      onClick={() => openEtherscan(tx.ethTxHash!)}
+                    <a
+                      href={getEtherscanUrl(tx.ethTxHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-gray-400 hover:text-blue-400 transition-colors"
                       title="View on Etherscan"
                     >
                       <ExternalLink className="h-4 w-4" />
-                    </button>
+                    </a>
                   )}
                   {tx.stellarTxHash && isRealHash(tx.stellarTxHash) && (
-                    <button
-                      onClick={() => openStellarExplorer(tx.stellarTxHash!)}
+                    <a
+                      href={getStellarExplorerUrl(tx.stellarTxHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-gray-400 hover:text-blue-400 transition-colors"
                       title="View on Stellar Expert"
                     >
                       <ExternalLink className="h-4 w-4" />
-                    </button>
+                    </a>
                   )}
                 </div>
               </div>
