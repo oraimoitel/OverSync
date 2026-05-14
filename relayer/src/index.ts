@@ -835,7 +835,9 @@ const activeOrders = new Map();
           beneficiary: stellarAddress,
           refundAddress: normalizedEthAddress,
           destinationChainId: 1, // Stellar
-          stellarTxHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+          // stellarTxHash will be set ONLY after the Stellar leg actually lands on-ledger.
+          // We never persist a zero/placeholder hash that could be confused with a real one.
+          stellarTxHash: null as string | null,
           partialFillEnabled: false,
           secret: secret,
           created: new Date().toISOString(),
@@ -1518,35 +1520,22 @@ const activeOrders = new Map();
       } catch (stellarError: any) {
         console.error('❌ Stellar transaction failed:', stellarError);
         console.log('Error details:', stellarError.message);
-        
-        // Fallback to mock response
-        const mockTxId = `mock_stellar_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-        console.log('🔄 Falling back to mock transaction:', mockTxId);
-        
-        // Use real-time rate for mock response too
-        const exchangeRate = storedOrder?.exchangeRate || ETH_TO_XLM_RATE;
-        // Convert wei to ETH first, then calculate XLM amount
-        const ethAmountFromWei = parseFloat(ethers.formatEther(orderAmount || '1000000000000000')); // 0.001 ETH default
-        const xlmAmount = (ethAmountFromWei * exchangeRate).toFixed(7);
-        
-        res.json({
-          success: true,
+
+        // Never fabricate a Stellar tx hash. Surface the real error so the
+        // frontend can show "swap failed" and the user can initiate a
+        // permissionless refund on Ethereum once the timelock expires.
+        res.status(502).json({
+          success: false,
           orderId,
-          stellarTxId: mockTxId,
-          message: 'Cross-chain swap completed (mock mode)',
-          error: stellarError.message,
+          error: 'Stellar transaction failed',
           details: {
-            ethereum: {
-              status: 'confirmed'
-            },
+            ethereum: { status: 'confirmed' },
             stellar: {
-              txId: mockTxId,
-              amount: `${xlmAmount} XLM`,
-              destination: userStellarAddress,
-              status: 'mock_processing',
-              error: 'Stellar transaction failed, using mock'
+              status: 'failed',
+              message: stellarError.message
             }
-          }
+          },
+          refundHint: 'Funds remain locked on Ethereum. After the timelock you can call refundOrder() to recover them.'
         });
         }
       } // End of ETH→XLM processing

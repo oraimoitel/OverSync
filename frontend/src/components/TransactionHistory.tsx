@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Clock, CheckCircle, XCircle, ArrowRight, ExternalLink, RefreshCw } from 'lucide-react';
+import { isTestnet } from '../config/networks';
 
 interface Transaction {
   id: string;
@@ -22,154 +23,86 @@ interface TransactionHistoryProps {
   stellarAddress?: string;
 }
 
+const STORAGE_KEY = 'oversync_transactions_v2';
+
+// Hash patterns that indicate fabricated/demo data, used to filter out legacy entries
+// persisted by older builds. New entries can never match these because v2 only stores
+// real on-chain hashes returned from the coordinator.
+const KNOWN_FAKE_HASHES = new Set([
+  '0x1234567890abcdef1234567890abcdef12345678',
+  '0xabcdef1234567890abcdef1234567890abcdef12',
+  '0x9876543210fedcba9876543210fedcba98765432',
+  '0x0000000000000000000000000000000000000000000000000000000000000000',
+  '0x0000000000000000000000000000000000000000',
+]);
+
+function isRealHash(hash?: string): boolean {
+  if (!hash) return true;
+  if (KNOWN_FAKE_HASHES.has(hash)) return false;
+  if (hash.startsWith('mock_')) return false;
+  if (hash.startsWith('placeholder')) return false;
+  if (/^0x0+$/.test(hash)) return false;
+  return true;
+}
+
+function isRealTransaction(tx: Transaction): boolean {
+  return isRealHash(tx.txHash) && isRealHash(tx.ethTxHash) && isRealHash(tx.stellarTxHash);
+}
+
 export default function TransactionHistory({ ethAddress, stellarAddress }: TransactionHistoryProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('all');
-  const enableMockData = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 
-  useEffect(() => {
-    // Check current network to show appropriate mock data
-    const urlParams = new URLSearchParams(window.location.search);
-    const networkParam = urlParams.get('network');
-    const isTestnetMode = networkParam === 'testnet';
-    
-    const mockTransactions: Transaction[] = enableMockData ? [
-      {
-        id: '1',
-        txHash: '0x1234567890abcdef1234567890abcdef12345678',
-        fromNetwork: isTestnetMode ? 'ETH Sepolia' : 'ETH Mainnet',
-        toNetwork: isTestnetMode ? 'Stellar Testnet' : 'Stellar Mainnet',
-        fromToken: 'ETH',
-        toToken: 'XLM',
-        amount: '0.001',
-        estimatedAmount: '10.00',
-        status: 'completed',
-        timestamp: Date.now() - 1800000, // 30 minutes ago
-        ethTxHash: '0x1234567890abcdef1234567890abcdef12345678',
-        stellarTxHash: 'abcd1234567890abcdef1234567890abcdef123456789',
-        direction: 'eth-to-xlm'
-      },
-      {
-        id: '2', 
-        txHash: 'stellar_tx_abcd1234567890abcdef1234567890abcdef',
-        fromNetwork: isTestnetMode ? 'Stellar Testnet' : 'Stellar Mainnet',
-        toNetwork: isTestnetMode ? 'ETH Sepolia' : 'ETH Mainnet',
-        fromToken: 'XLM',
-        toToken: 'ETH',
-        amount: '100.00',
-        estimatedAmount: '0.01',
-        status: 'pending',
-        timestamp: Date.now() - 600000, // 10 minutes ago
-        stellarTxHash: 'stellar_tx_abcd1234567890abcdef1234567890abcdef',
-        direction: 'xlm-to-eth'
-      },
-      {
-        id: '3',
-        txHash: '0xabcdef1234567890abcdef1234567890abcdef12',
-        fromNetwork: isTestnetMode ? 'ETH Sepolia' : 'ETH Mainnet',
-        toNetwork: isTestnetMode ? 'Stellar Testnet' : 'Stellar Mainnet',
-        fromToken: 'ETH',
-        toToken: 'XLM',
-        amount: '0.005',
-        estimatedAmount: '50.00',
-        status: 'failed',
-        timestamp: Date.now() - 3600000, // 1 hour ago
-        ethTxHash: '0xabcdef1234567890abcdef1234567890abcdef12',
-        direction: 'eth-to-xlm'
-      },
-      {
-        id: '4',
-        txHash: '0x9876543210fedcba9876543210fedcba98765432',
-        fromNetwork: isTestnetMode ? 'ETH Sepolia' : 'ETH Mainnet', 
-        toNetwork: isTestnetMode ? 'Stellar Testnet' : 'Stellar Mainnet',
-        fromToken: 'ETH',
-        toToken: 'XLM',
-        amount: '0.002',
-        estimatedAmount: '20.00',
-        status: 'cancelled',
-        timestamp: Date.now() - 7200000, // 2 hours ago
-        ethTxHash: '0x9876543210fedcba9876543210fedcba98765432',
-        direction: 'eth-to-xlm'
-      }
-    ] : [];
-
-    // Try to get real transactions from localStorage first
-    const savedTransactions = localStorage.getItem('bridge_transactions');
-    if (savedTransactions) {
-      try {
-        const realTransactions = JSON.parse(savedTransactions);
-        console.log('📊 Found real transactions in localStorage:', realTransactions);
-        
-        if (enableMockData) {
-          const allTransactions = [...realTransactions, ...mockTransactions];
-          setTransactions(allTransactions);
-        } else {
-          setTransactions(realTransactions);
-        }
-      } catch (error) {
-        console.log('❌ Error reading localStorage transactions:', error);
-        setTransactions(mockTransactions);
-      }
-    } else {
-      console.log('📊 No real transactions found, using mock data');
-      setTransactions(mockTransactions);
+  const loadFromStorage = useCallback((): Transaction[] => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as Transaction[];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(isRealTransaction);
+    } catch (err) {
+      console.warn('Could not parse stored transactions:', err);
+      return [];
     }
-    
-    // Note: Removed automatic API call since API endpoint has issues
-    // Refresh button now only refreshes from localStorage
-  }, [ethAddress, stellarAddress]);
+  }, []);
 
-  const fetchTransactions = async () => {
+  const refreshFromCoordinator = useCallback(async () => {
+    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL;
+    if (!apiBase || (!ethAddress && !stellarAddress)) {
+      setTransactions(loadFromStorage());
+      return;
+    }
     setIsLoading(true);
     try {
-      console.log('📊 Refreshing transactions from localStorage only...');
-      
-      // Get fresh data from localStorage
-      const savedTransactions = localStorage.getItem('bridge_transactions');
-      if (savedTransactions) {
-        const realTransactions = JSON.parse(savedTransactions);
-        console.log('✅ Refreshed transactions from localStorage:', realTransactions.length, 'transactions');
-        
-        // Combine with mock data
-        const urlParams = new URLSearchParams(window.location.search);
-        const networkParam = urlParams.get('network');
-        const isTestnetMode = networkParam === 'testnet';
-        
-        const mockTransactions: Transaction[] = enableMockData ? [
-          {
-            id: 'mock1',
-            txHash: '0x1234567890abcdef1234567890abcdef12345678',
-            fromNetwork: isTestnetMode ? 'ETH Sepolia' : 'ETH Mainnet',
-            toNetwork: isTestnetMode ? 'Stellar Testnet' : 'Stellar Mainnet',
-            fromToken: 'ETH',
-            toToken: 'XLM',
-            amount: '0.001',
-            estimatedAmount: '10.00',
-            status: 'completed',
-            timestamp: Date.now() - 1800000,
-            ethTxHash: '0x1234567890abcdef1234567890abcdef12345678',
-            stellarTxHash: 'abcd1234567890abcdef1234567890abcdef123456789',
-            direction: 'eth-to-xlm'
-          }
-        ] : [];
-        
-        const allTransactions = enableMockData
-          ? [...realTransactions, ...mockTransactions]
-          : realTransactions;
-        setTransactions(allTransactions);
-      } else {
-        console.log('📊 No real transactions found in localStorage');
-        if (!enableMockData) {
-          setTransactions([]);
-        }
-      }
-    } catch (error) {
-      console.log('❌ Failed to refresh from localStorage:', error);
+      const params = new URLSearchParams();
+      if (ethAddress) params.set('eth', ethAddress);
+      if (stellarAddress) params.set('stellar', stellarAddress);
+      const res = await fetch(`${apiBase}/api/orders/history?${params.toString()}`);
+      if (!res.ok) throw new Error(`Coordinator returned ${res.status}`);
+      const body = await res.json();
+      const remote: Transaction[] = Array.isArray(body?.transactions)
+        ? body.transactions.filter(isRealTransaction)
+        : [];
+      const local = loadFromStorage();
+      const byId = new Map<string, Transaction>();
+      for (const tx of local) byId.set(tx.id, tx);
+      for (const tx of remote) byId.set(tx.id, tx);
+      const merged = Array.from(byId.values()).sort((a, b) => b.timestamp - a.timestamp);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      setTransactions(merged);
+    } catch (err) {
+      console.warn('Coordinator history unavailable, falling back to local cache:', err);
+      setTransactions(loadFromStorage());
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [ethAddress, stellarAddress, loadFromStorage]);
+
+  useEffect(() => {
+    setTransactions(loadFromStorage());
+    void refreshFromCoordinator();
+  }, [loadFromStorage, refreshFromCoordinator]);
 
   const getStatusColor = (status: Transaction['status']) => {
     switch (status) {
@@ -207,26 +140,24 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    
-    if (days > 0) {
-      return `${days}d ago`;
-    } else if (hours > 0) {
-      return `${hours}h ago`;
-    } else {
-      return `${minutes}m ago`;
-    }
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    return `${minutes}m ago`;
   };
 
-  const filteredTransactions = transactions.filter(tx => 
+  const filteredTransactions = transactions.filter(tx =>
     filter === 'all' || tx.status === filter
   );
 
   const openEtherscan = (txHash: string) => {
-    window.open(`https://sepolia.etherscan.io/tx/${txHash}`, '_blank');
+    const base = isTestnet() ? 'https://sepolia.etherscan.io' : 'https://etherscan.io';
+    window.open(`${base}/tx/${txHash}`, '_blank', 'noopener,noreferrer');
   };
 
   const openStellarExplorer = (txHash: string) => {
-    window.open(`https://stellar.expert/explorer/testnet/tx/${txHash}`, '_blank');
+    const network = isTestnet() ? 'testnet' : 'public';
+    window.open(`https://stellar.expert/explorer/${network}/tx/${txHash}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -239,7 +170,7 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
           </p>
         </div>
         <button
-          onClick={fetchTransactions}
+          onClick={refreshFromCoordinator}
           disabled={isLoading}
           className="flex items-center gap-2 px-4 py-2 bg-[#3ABEFF]/20 hover:bg-[#3ABEFF]/30 text-[#3ABEFF] rounded-lg transition-colors button-hover-scale"
         >
@@ -248,7 +179,6 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
         </button>
       </div>
 
-      {/* Filter Buttons */}
       <div className="flex gap-2 mb-6">
         {[
           { key: 'all', label: 'All' },
@@ -270,16 +200,15 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
         ))}
       </div>
 
-      {/* Transaction List */}
       <div className="space-y-4">
         {filteredTransactions.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Clock className="h-8 w-8 text-gray-400" />
             </div>
-            <p className="text-gray-400 text-lg">No transactions found</p>
+            <p className="text-gray-400 text-lg">No transactions yet</p>
             <p className="text-gray-500 text-sm mt-1">
-              Your cross-chain swaps will appear here
+              Your real cross-chain swaps will appear here after the first transaction
             </p>
           </div>
         ) : (
@@ -298,9 +227,9 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
                     {formatTime(tx.timestamp)}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  {tx.ethTxHash && (
+                  {tx.ethTxHash && isRealHash(tx.ethTxHash) && (
                     <button
                       onClick={() => openEtherscan(tx.ethTxHash!)}
                       className="text-gray-400 hover:text-blue-400 transition-colors"
@@ -309,11 +238,11 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
                       <ExternalLink className="h-4 w-4" />
                     </button>
                   )}
-                  {tx.stellarTxHash && (
+                  {tx.stellarTxHash && isRealHash(tx.stellarTxHash) && (
                     <button
                       onClick={() => openStellarExplorer(tx.stellarTxHash!)}
                       className="text-gray-400 hover:text-blue-400 transition-colors"
-                      title="View on Stellar Explorer"
+                      title="View on Stellar Expert"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </button>
@@ -321,7 +250,6 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
                 </div>
               </div>
 
-              {/* Transaction Details */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="text-center">
@@ -332,9 +260,9 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
                       {tx.fromNetwork}
                     </div>
                   </div>
-                  
+
                   <ArrowRight className="h-4 w-4 text-gray-400" />
-                  
+
                   <div className="text-center">
                     <div className="text-white font-medium">
                       {tx.estimatedAmount} {tx.toToken}
@@ -346,10 +274,9 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
                 </div>
               </div>
 
-              {/* Transaction Hash */}
               <div className="mt-3 pt-3 border-t border-white/5">
                 <div className="text-xs text-gray-400">
-                  Transaction: 
+                  Transaction:
                   <span className="text-gray-300 font-mono ml-1">
                     {tx.txHash.substring(0, 10)}...{tx.txHash.substring(tx.txHash.length - 8)}
                   </span>
@@ -361,4 +288,4 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
       </div>
     </div>
   );
-} 
+}

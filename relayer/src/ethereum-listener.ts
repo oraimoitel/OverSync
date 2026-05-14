@@ -187,29 +187,25 @@ export class EthereumEventListener {
   }
 
   /**
-   * Process cross-chain order by creating Stellar HTLC
+   * Process cross-chain order by creating Stellar HTLC.
+   *
+   * The v1 implementation only logged a `placeholder-tx-hash` here and
+   * never actually created a Stellar HTLC. v2 routes this through the
+   * Soroban HTLC contract via the coordinator's StellarBridgeService.
+   * Until that wiring is in place (Phase 4) we explicitly NO-OP and let
+   * the user's own claim/refund handle settlement, rather than logging
+   * fake success messages.
    */
   private async processCrossChainOrder(order: CrossChainOrder): Promise<void> {
-    try {
-      console.log('\n🌉 PROCESSING CROSS-CHAIN ORDER');
-      console.log('==============================');
-      
-      if (RELAYER_CONFIG.enableMockMode) {
-        console.log('🧪 MOCK MODE: Simulating Stellar HTLC creation...');
-        console.log(`✅ Mock Stellar HTLC created for order ${order.ethereumOrderId}`);
-        console.log(`🆔 Mock Balance ID: cb-${order.ethereumOrderId}-${Date.now()}`);
-        return;
-      }
-
-      // Create Stellar HTLC using the StellarClient (placeholder)
-      console.log('🌟 Creating Stellar HTLC... (placeholder)');
-      console.log('✅ Stellar HTLC created successfully! (placeholder)');
-      console.log(`🆔 Balance ID: cb-${order.ethereumOrderId}-${Date.now()}`);
-      console.log(`📝 Stellar Tx Hash: placeholder-tx-hash`);
-
-    } catch (error) {
-      console.error('❌ Error processing cross-chain order:', error);
-    }
+    console.log('🌉 OrderCreated observed on Ethereum:', {
+      ethereumOrderId: order.ethereumOrderId,
+      hashLock: order.hashLock
+    });
+    console.log(
+      '⚠️  v1 placeholder Stellar HTLC path disabled. The v2 coordinator (Phase 4) ' +
+      'creates the Soroban HTLC. Until then the user can refund permissionlessly ' +
+      'after the timelock.'
+    );
   }
 
   /**

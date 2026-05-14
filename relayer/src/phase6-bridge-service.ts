@@ -40,58 +40,55 @@ enum BridgeOrderStatus {
   FAILED = 'FAILED'
 }
 
-// Mock EnhancedStellarBridge class
+/**
+ * Stub bridge — superseded by the v2 SDK + coordinator (Phase 4).
+ *
+ * The original v1 stub returned `mock-order-id`, `mock-eth-tx` and
+ * `mock-stellar-tx` for every call, which silently passed callers a fake
+ * "success" path. All methods now throw a `NotImplemented` style error
+ * so any code still importing this module fails loudly during the v2
+ * migration instead of silently returning fabricated data.
+ */
 class EnhancedStellarBridge {
-  constructor(config: EnhancedBridgeConfig) {
-    // placeholder
+  constructor(_config: EnhancedBridgeConfig) {}
+
+  private fail(method: string): never {
+    throw new Error(
+      `[phase6-bridge-service] ${method}() removed in v2 rebuild. ` +
+      `Use the v2 coordinator (Phase 4) and @oversync/sdk instead.`
+    );
   }
 
-  async createCrossChainOrder(params: CrossChainOrderParams): Promise<BridgeOrderState> {
-    // placeholder
-    return {
-      orderId: 'mock-order-id',
-      status: BridgeOrderStatus.CREATED,
-      filledAmount: '0'
-    };
+  async createCrossChainOrder(_params: CrossChainOrderParams): Promise<BridgeOrderState> {
+    this.fail('createCrossChainOrder');
   }
 
-  async claimCrossChainOrder(orderId: string, preimage: string, claimAmount?: string): Promise<any> {
-    // placeholder
-    return {
-      ethereumTxHash: 'mock-eth-tx',
-      stellarTxHash: 'mock-stellar-tx'
-    };
+  async claimCrossChainOrder(_orderId: string, _preimage: string, _claimAmount?: string): Promise<any> {
+    this.fail('claimCrossChainOrder');
   }
 
-  async refundCrossChainOrder(orderId: string): Promise<any> {
-    // placeholder
-    return {
-      ethereumTxHash: 'mock-eth-tx',
-      stellarTxHash: 'mock-stellar-tx'
-    };
+  async refundCrossChainOrder(_orderId: string): Promise<any> {
+    this.fail('refundCrossChainOrder');
   }
 
-  getOrderState(orderId: string): BridgeOrderState | undefined {
-    // placeholder
+  getOrderState(_orderId: string): BridgeOrderState | undefined {
     return undefined;
   }
 
   getAllOrders(): BridgeOrderState[] {
-    // placeholder
     return [];
   }
 
-  getOrdersByStatus(status: BridgeOrderStatus): BridgeOrderState[] {
-    // placeholder
+  getOrdersByStatus(_status: BridgeOrderStatus): BridgeOrderState[] {
     return [];
   }
 
   async monitorOrderExpiration(): Promise<void> {
-    // placeholder
+    // intentionally a no-op until the v2 coordinator owns expiry monitoring
   }
 
   async processCrossChainMessages(): Promise<void> {
-    // placeholder
+    // intentionally a no-op until the v2 coordinator owns message processing
   }
 }
 

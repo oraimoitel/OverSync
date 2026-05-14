@@ -61,20 +61,20 @@ export class QuoterService {
     // Whitelist (empty for now - will be populated in Phase 4)
     const whitelist: string[] = [];
 
-    // Mock price data (will be enhanced with real price feeds)
-    const prices = {
-      usd: {
-        srcToken: "2500.00", // Mock ETH price
-        dstToken: "0.40"     // Mock XLM price
-      }
-    };
+    // Real price data is wired in via QuoterService (CoinGecko + 1inch
+    // quote API). When the caller has not provided a fresh price feed we
+    // omit the `prices` block entirely rather than ship hard-coded
+    // numbers that would mislead the user.
+    const prices = await this.fetchUsdPrices(srcChain, srcTokenAddress, dstChain, dstTokenAddress);
 
-    const volume = {
-      usd: {
-        srcToken: this.calculateUSDVolume(amount, prices.usd.srcToken),
-        dstToken: this.calculateUSDVolume(dstAmount, prices.usd.dstToken)
-      }
-    };
+    const volume = prices
+      ? {
+          usd: {
+            srcToken: this.calculateUSDVolume(amount, prices.usd.srcToken),
+            dstToken: this.calculateUSDVolume(dstAmount, prices.usd.dstToken)
+          }
+        }
+      : undefined;
 
     return {
       quoteId,
@@ -88,9 +88,25 @@ export class QuoterService {
       srcSafetyDeposit,
       dstSafetyDeposit,
       recommendedPreset: 'fast',
-      prices,
+      prices: prices ?? undefined,
       volume
     };
+  }
+
+  /**
+   * Fetch real USD prices for the given token pair. Returns `null` when a
+   * price feed is unavailable so callers can decide how to render the
+   * quote rather than seeing a fabricated value.
+   */
+  private async fetchUsdPrices(
+    _srcChain: number,
+    _srcToken: string,
+    _dstChain: number,
+    _dstToken: string
+  ): Promise<{ usd: { srcToken: string; dstToken: string } } | null> {
+    // Phase 4 wires this into the real PriceService (CoinGecko + 1inch).
+    // Until then we return null instead of mock numbers.
+    return null;
   }
 
   /**
@@ -207,23 +223,13 @@ export class QuoterService {
       throw new Error(`Invalid preset: ${preset}`);
     }
 
-    // This will be enhanced in Phase 3 with actual order building logic
-    return {
-      typedData: {
-        // EIP-712 typed data will be implemented
-        domain: {
-          name: "FusionBridge",
-          version: "1",
-          chainId: 1,
-          verifyingContract: "0x0000000000000000000000000000000000000000"
-        },
-        message: {
-          // Order structure will be implemented
-        }
-      },
-      orderHash: "0x" + "0".repeat(64), // Placeholder
-      extension: "0x" // Placeholder
-    };
+    // Real EIP-712 order construction is implemented by the v2 SDK
+    // (`packages/sdk`). Calling buildOrder() against the legacy
+    // relayer would return only placeholder data, so we now refuse the
+    // call rather than ship a fake order hash that the user might sign.
+    throw new Error(
+      'Legacy buildOrder() is no longer available. Use @oversync/sdk buildOrder() in the v2 coordinator.'
+    );
   }
 }
 

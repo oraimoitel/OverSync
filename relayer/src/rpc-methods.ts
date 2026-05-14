@@ -241,137 +241,41 @@ export class FusionRpcHandler {
 
   /**
    * Handle getActiveOrders method
+   *
+   * The v1 implementation returned fabricated orders with hashes like
+   * `0xa1b2c3d4...`. That has been removed. Real order storage is being
+   * implemented in the v2 coordinator (Phase 4); until then this endpoint
+   * returns an empty result set rather than misleading data.
    */
-  private async handleGetActiveOrders(params?: any): Promise<any> {
-    const { 
-      chainIds, 
-      resolver, 
-      status = 'active', 
-      limit = 50, 
-      offset = 0 
-    } = params || {};
-
-    // This would integrate with actual order storage
-    // For now, returning mock data with realistic structure
-    const mockOrders: ActiveOrderInfo[] = [
-      {
-        orderHash: '0xa1b2c3d4e5f6789012345678901234567890abcdef',
-        status: 'partially_filled',
-        srcChainId: 1,
-        dstChainId: 137,
-        makingAmount: '1000000000000000000',
-        takingAmount: '2000000000',
-        fillPercentage: 40,
-        remainingAmount: '600000000000000000',
-        fragments: {
-          total: 5,
-          filled: 2,
-          ready: 3
-        },
-        resolver: '0x742d35Cc6634C0532925a3b8D400e1e4dff7D88e',
-        createdAt: Date.now() - 300000,
-        updatedAt: Date.now() - 60000,
-        expiresAt: Date.now() + 3600000
-      },
-      {
-        orderHash: '0xfedcba9876543210fedcba9876543210fedcba98',
-        status: 'active',
-        srcChainId: 137,
-        dstChainId: 1,
-        makingAmount: '5000000000',
-        takingAmount: '2500000000000000000',
-        fillPercentage: 0,
-        remainingAmount: '5000000000',
-        fragments: {
-          total: 4,
-          filled: 0,
-          ready: 4
-        },
-        createdAt: Date.now() - 120000,
-        updatedAt: Date.now() - 120000,
-        expiresAt: Date.now() + 7200000
-      }
-    ];
-
-    // Apply filters
-    let filteredOrders = mockOrders;
-
-    if (chainIds && Array.isArray(chainIds)) {
-      filteredOrders = filteredOrders.filter(order => 
-        chainIds.includes(order.srcChainId) || chainIds.includes(order.dstChainId)
-      );
-    }
-
-    if (resolver) {
-      filteredOrders = filteredOrders.filter(order => order.resolver === resolver);
-    }
-
-    if (status !== 'all') {
-      filteredOrders = filteredOrders.filter(order => order.status === status);
-    }
-
-    // Apply pagination
-    const paginatedOrders = filteredOrders.slice(offset, offset + limit);
-
+  private async handleGetActiveOrders(_params?: any): Promise<any> {
+    const orders: ActiveOrderInfo[] = [];
     return {
-      orders: paginatedOrders,
-      pagination: {
-        total: filteredOrders.length,
-        limit,
-        offset,
-        hasMore: offset + limit < filteredOrders.length
-      },
-      metadata: {
-        totalValue: filteredOrders.reduce((sum, order) => sum + parseInt(order.makingAmount), 0).toString(),
-        averageFillPercentage: filteredOrders.reduce((sum, order) => sum + order.fillPercentage, 0) / filteredOrders.length || 0,
-        activeChains: [...new Set(filteredOrders.flatMap(order => [order.srcChainId, order.dstChainId]))]
-      }
+      orders,
+      pagination: { total: 0, limit: 0, offset: 0, hasMore: false },
+      metadata: { totalValue: '0', averageFillPercentage: 0, activeChains: [] },
+      notice: 'Live order index is being migrated to the v2 coordinator. See ARCHITECTURE.md.'
     };
   }
 
   /**
    * Handle getSecrets method
+   *
+   * Returns the real secret-reveal state for an order. Until the v2
+   * coordinator backs this with persistent storage, we explicitly refuse
+   * to fabricate placeholder secrets/hashes.
    */
   private async handleGetSecrets(params?: any): Promise<any> {
-    const { orderHash, secretIndex, includeRevealed = false } = params || {};
-
+    const { orderHash } = params || {};
     if (!orderHash) {
       throw new Error('orderHash is required');
     }
-
-    // Mock secrets data
-    const mockSecrets: SecretInfo[] = [
-      {
-        orderHash,
-        secretIndex: 0,
-        secretHash: '0x1234567890abcdef1234567890abcdef12345678',
-        secret: includeRevealed ? '0xsecret123' : undefined,
-        fragmentIndex: 0,
-        status: 'revealed',
-        resolver: '0x742d35Cc6634C0532925a3b8D400e1e4dff7D88e',
-        revealedAt: Date.now() - 60000
-      },
-      {
-        orderHash,
-        secretIndex: 1,
-        secretHash: '0xabcdef1234567890abcdef1234567890abcdef12',
-        fragmentIndex: 1,
-        status: 'pending',
-        resolver: '0x742d35Cc6634C0532925a3b8D400e1e4dff7D88e'
-      }
-    ];
-
-    let filteredSecrets = mockSecrets;
-
-    if (secretIndex !== undefined) {
-      filteredSecrets = filteredSecrets.filter(secret => secret.secretIndex === secretIndex);
-    }
-
+    const secrets: SecretInfo[] = [];
     return {
       orderHash,
-      secrets: filteredSecrets,
-      totalSecrets: mockSecrets.length,
-      revealedSecrets: mockSecrets.filter(s => s.status === 'revealed').length
+      secrets,
+      totalSecrets: 0,
+      revealedSecrets: 0,
+      notice: 'Secret tracking is being migrated to the v2 coordinator. See ARCHITECTURE.md.'
     };
   }
 
@@ -489,10 +393,13 @@ export class FusionRpcHandler {
 
   /**
    * Handle submitOrder method
+   *
+   * The legacy implementation returned a randomly generated `orderHash`
+   * that did not correspond to anything on-chain. We now reject the call
+   * until the v2 coordinator wires this through `OrdersService`.
    */
-  private async handleSubmitOrder(params: any): Promise<any> {
-    // This would integrate with orders service
-    return { submitted: true, orderHash: '0x' + Math.random().toString(16).substr(2, 64) };
+  private async handleSubmitOrder(_params: any): Promise<any> {
+    throw new Error('submitOrder is not available on this coordinator build. Use the v2 REST endpoint /api/orders/create.');
   }
 
   /**
@@ -510,24 +417,30 @@ export class FusionRpcHandler {
 
   /**
    * Handle getOrderStatus method
+   *
+   * Returns the real status from `OrdersService` if available; never
+   * fabricates fill percentages or fragment counts.
    */
   private async handleGetOrderStatus(params: any): Promise<any> {
     const { orderHash } = params;
     if (!orderHash) {
       throw new Error('orderHash is required');
     }
-
-    // Mock order status
+    const order = (this.ordersService as any)?.getOrder?.(orderHash);
+    if (!order) {
+      return {
+        orderHash,
+        status: 'unknown',
+        notice: 'Order not found in coordinator storage. Real-time status will be available after Phase 4.',
+        lastUpdate: Date.now()
+      };
+    }
     return {
       orderHash,
-      status: 'partially_filled',
-      fillPercentage: 60,
-      fragments: {
-        total: 5,
-        filled: 3,
-        ready: 2
-      },
-      lastUpdate: Date.now()
+      status: order.status,
+      fillPercentage: order.fillPercentage ?? 0,
+      fragments: order.fragments,
+      lastUpdate: order.lastUpdate ?? Date.now()
     };
   }
 

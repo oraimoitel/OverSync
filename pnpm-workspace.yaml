@@ -2,4 +2,7 @@ packages:
   - 'contracts'
   - 'stellar'
   - 'relayer'
-  - 'frontend' 
+  - 'frontend'
+  - 'resolver'
+  - 'coordinator'
+  - 'packages/*'

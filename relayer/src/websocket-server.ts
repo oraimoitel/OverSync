@@ -280,19 +280,17 @@ export class FusionWebSocketServer extends EventEmitter {
 
   /**
    * Handle getActiveOrders RPC method
+   *
+   * The v1 implementation returned a hard-coded fake order
+   * (`0x1234567890abcdef`). That is gone. The v2 coordinator owns this
+   * data; until it is wired up we return an empty array rather than
+   * fabricated entries.
    */
-  private handleGetActiveOrders(client: WebSocketClient, id?: string, params?: any): void {
-    // This should integrate with the orders service
-    // For now, returning mock data
-    const orders = [
-      {
-        orderHash: '0x1234567890abcdef',
-        status: 'active',
-        fillPercentage: 25
-      }
-    ];
-
-    this.sendResponse(client, id, { orders });
+  private handleGetActiveOrders(client: WebSocketClient, id?: string, _params?: any): void {
+    this.sendResponse(client, id, {
+      orders: [],
+      notice: 'WebSocket order index is being migrated to the v2 coordinator. See ARCHITECTURE.md.'
+    });
   }
 
   /**
