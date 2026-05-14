@@ -1,6 +1,6 @@
 {
   "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter @oversync/sdk build && pnpm --filter @oversync/frontend build",
-  "outputDirectory": "frontend/dist",
+  "outputDirectory": "dist",
   "installCommand": "npm install -g pnpm@latest",
   "framework": "vite",
   "rewrites": [
