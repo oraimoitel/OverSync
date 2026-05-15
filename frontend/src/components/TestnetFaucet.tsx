@@ -39,7 +39,7 @@ export default function TestnetFaucet({ ethAddress, stellarAddress }: TestnetFau
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-[#3ABEFF]/20 hover:bg-[#3ABEFF]/30 text-[#3ABEFF] rounded-lg text-sm transition-colors button-hover-scale"
+                    className="button-hover-scale flex items-center gap-2 rounded-lg border border-cyan-200/25 bg-cyan-200/[0.12] px-3 py-1.5 text-sm text-cyan-50 transition-colors hover:bg-cyan-200/[0.18]"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
@@ -48,7 +48,7 @@ export default function TestnetFaucet({ ethAddress, stellarAddress }: TestnetFau
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-slate-800/95 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-[100] p-4">
+        <div className="absolute right-0 z-[100] mt-2 w-80 rounded-xl border border-cyan-200/20 bg-[#070b1c]/95 p-4 shadow-2xl backdrop-blur-xl">
           <h3 className="text-white font-semibold mb-4">Get Testnet Tokens</h3>
 
           {/* Connected Addresses */}

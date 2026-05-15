@@ -156,7 +156,7 @@ export function RefundDialog(props: RefundDialogProps) {
   const explorer = isTestnet() ? "https://sepolia.etherscan.io" : "https://etherscan.io";
 
   return (
-    <div className="bg-[#131823] rounded-2xl p-6 border border-white/10 max-w-md w-full">
+    <div className="max-w-md rounded-2xl border border-cyan-200/20 bg-[#070b1c]/95 p-6 shadow-2xl shadow-black/55 backdrop-blur-2xl w-full">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold text-white mb-1">Refund order</h2>
@@ -236,7 +236,7 @@ export function RefundDialog(props: RefundDialogProps) {
       <button
         onClick={handleRefund}
         disabled={phase !== "ready" && phase !== "error"}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold transition-colors bg-gradient-to-r from-[#6C63FF] to-[#3ABEFF] hover:opacity-90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+        className="brand-cta flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
       >
         {phase === "submitting" && <RefreshCw className="h-4 w-4 animate-spin" />}
         {phase === "submitting" ? "Submitting refund..." : "Refund from contract"}

@@ -313,7 +313,7 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
     <div className="surface-panel flex max-h-[calc(100vh-10rem)] min-h-0 flex-col overflow-hidden rounded-[1.25rem] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.36)] md:p-6 lg:max-h-[calc(100vh-13rem)]">
       <div className="mb-6 flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Ledger</p>
+          <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/55">Ledger</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white">Transaction History</h2>
           <p className="mt-2 text-sm text-slate-400">
             Track your cross-chain swaps between Ethereum and Stellar networks
@@ -322,7 +322,7 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
         <button
           onClick={refreshFromCoordinator}
           disabled={isLoading}
-          className="button-hover-scale flex items-center justify-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/15 disabled:opacity-60"
+          className="button-hover-scale flex items-center justify-center gap-2 rounded-full border border-cyan-200/30 bg-cyan-200/[0.12] px-4 py-2 text-sm font-semibold text-cyan-50 shadow-[0_12px_34px_rgba(0,226,255,0.12)] transition hover:border-cyan-100/45 hover:bg-cyan-200/[0.18] disabled:opacity-60"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
@@ -341,7 +341,7 @@ export default function TransactionHistory({ ethAddress, stellarAddress }: Trans
             onClick={() => setFilter(key as any)}
             className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
               filter === key
-                ? 'bg-gradient-to-r from-cyan-300 to-emerald-200 text-[#061013]'
+                ? 'brand-cta'
                 : 'border border-white/10 bg-white/[0.045] text-slate-400 hover:bg-white/[0.075] hover:text-white'
             }`}
           >

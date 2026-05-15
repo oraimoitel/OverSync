@@ -199,23 +199,23 @@ function App() {
       )}
 
       {/* Top Navigation */}
-      <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#071012]/70 px-4 py-3 backdrop-blur-2xl md:px-8">
+      <nav className="sticky top-0 z-50 w-full border-b border-cyan-200/15 bg-[#050817]/78 px-4 py-3 shadow-[0_16px_60px_rgba(0,0,0,0.28)] backdrop-blur-2xl md:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <img 
             src="/images/oversync-logo.png" 
             alt="OverSync" 
-            className="h-11 w-11 rounded-xl border border-white/10 shadow-[0_0_28px_rgba(52,211,153,0.18)]"
+            className="h-11 w-11 rounded-xl border border-cyan-200/20 shadow-[0_0_30px_rgba(0,226,255,0.2)]"
           />
           <div>
             <span className="block text-lg font-semibold tracking-tight text-white">OverSync</span>
-            <span className="hidden text-xs uppercase tracking-[0.32em] text-emerald-200/60 sm:block">Fusion Rail</span>
+            <span className="hidden text-xs uppercase tracking-[0.32em] text-amber-200/75 sm:block">Fusion Rail</span>
           </div>
         </div>
         
         <div className="flex items-center gap-2 md:gap-3">
           <nav className="hidden items-center gap-2 md:flex">
-            <a href="https://www.alchemy.com/faucets/ethereum-sepolia" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:bg-white/[0.08] hover:text-white">
+            <a href="https://www.alchemy.com/faucets/ethereum-sepolia" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-cyan-200/15 bg-white/[0.055] px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-200/35 hover:bg-cyan-200/10 hover:text-white">
               Faucet
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
@@ -231,7 +231,7 @@ function App() {
             }`}
           >
             <div className={`w-2 h-2 rounded-full ${
-              currentNetwork === 'mainnet' ? 'bg-cyan-300' : 'bg-amber-300'
+              currentNetwork === 'mainnet' ? 'bg-cyan-300 shadow-[0_0_16px_rgba(0,226,255,0.65)]' : 'bg-amber-300 shadow-[0_0_16px_rgba(255,184,77,0.55)]'
             }`}></div>
             {currentNetwork === 'mainnet' ? 'Mainnet' : 'Testnet'}
           </button>
@@ -240,7 +240,7 @@ function App() {
           <div className="relative">
             <button 
               onClick={() => setShowWalletMenu(!showWalletMenu)}
-              className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(34,211,238,0.12)] transition hover:border-cyan-200/40 hover:bg-cyan-300/15 md:px-5"
+              className="inline-flex items-center gap-2 rounded-full border border-cyan-200/30 bg-cyan-200/[0.12] px-3 py-2 text-sm font-semibold text-white shadow-[0_12px_42px_rgba(0,226,255,0.18)] transition hover:border-cyan-100/50 hover:bg-cyan-200/[0.18] md:px-5"
             >
               <Wallet className="h-4 w-4" />
               {isWalletsConnected ? (
@@ -261,17 +261,17 @@ function App() {
 
             {/* Wallet Dropdown Menu */}
             {showWalletMenu && (
-              <div className="absolute right-0 top-full z-[100] mt-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-[#0b1518]/95 p-4 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+              <div className="absolute right-0 top-full z-[100] mt-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-cyan-200/20 bg-[#070b1c]/95 p-4 shadow-2xl shadow-black/55 backdrop-blur-2xl">
                 <h3 className="mb-4 text-center font-semibold text-white">Connect Wallets</h3>
                 
                 {(connectionError || stellarError) && (
-                  <div className="mb-4 rounded-xl border border-red-400/25 bg-red-500/15 p-3">
+                  <div className="mb-4 rounded-xl border border-red-400/35 bg-red-500/16 p-3">
                     <p className="text-red-300 text-sm">{connectionError || stellarError}</p>
                   </div>
                 )}
 
                 {/* MetaMask */}
-                <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                <div className="mb-3 rounded-2xl border border-orange-200/18 bg-white/[0.055] p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-orange-300/20 bg-orange-400/15 text-orange-200">
@@ -307,10 +307,10 @@ function App() {
                 </div>
 
                 {/* Freighter */}
-                <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+                <div className="mb-3 rounded-2xl border border-cyan-200/[0.18] bg-white/[0.055] p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/15 text-cyan-100">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/25 bg-cyan-200/[0.14] text-cyan-50">
                         <RadioTower className="h-4 w-4" />
                       </span>
                       <div>
@@ -333,7 +333,7 @@ function App() {
                       <button
                         type="button"
                         onClick={handleFreighterConnect}
-                        className="rounded-full border border-cyan-300/20 bg-cyan-300/15 px-4 py-2 text-sm text-cyan-200 transition hover:bg-cyan-300/25"
+                        className="rounded-full border border-cyan-200/25 bg-cyan-200/[0.14] px-4 py-2 text-sm text-cyan-50 transition hover:bg-cyan-200/25"
                         disabled={stellarLoading}
                       >
                         {stellarLoading ? 'Connecting...' : 'Connect'}
@@ -365,7 +365,7 @@ function App() {
       <main className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-8 px-4 pb-20 pt-10 md:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,560px)] lg:items-start lg:pt-16">
         <section className="space-y-8">
           <div className="max-w-2xl">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100/80">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-200/30 bg-cyan-200/[0.12] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-50/90 shadow-[0_12px_34px_rgba(0,226,255,0.1)]">
               <RadioTower className="h-3.5 w-3.5" />
               Live cross-chain rail
             </div>
@@ -373,7 +373,7 @@ function App() {
               Ethereum and Stellar,
               <span className="hero-gradient block">synced with intent.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-slate-300 md:text-lg">
+            <p className="mt-5 max-w-xl text-base leading-7 text-slate-200/90 md:text-lg">
               Execute ETH and XLM swaps from a focused, production-grade control surface with live quotes, wallet state, and settlement history in one place.
             </p>
           </div>
@@ -385,8 +385,8 @@ function App() {
               { icon: LockKeyhole, label: 'Mode', value: currentNetwork === 'mainnet' ? 'Mainnet' : 'Testnet' },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="metric-tile">
-                <Icon className="h-4 w-4 text-cyan-200" />
-                <span className="text-xs text-slate-400">{label}</span>
+                <Icon className="h-4 w-4 text-cyan-100" />
+                <span className="text-xs text-slate-300/80">{label}</span>
                 <strong className="text-sm font-semibold text-white">{value}</strong>
               </div>
             ))}
@@ -395,10 +395,10 @@ function App() {
           <div className="route-panel max-w-2xl">
             <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Active route</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-cyan-100/55">Active route</p>
                 <h2 className="mt-1 text-lg font-semibold text-white">ETH / XLM liquidity lane</h2>
               </div>
-              <Zap className="h-5 w-5 text-amber-200" />
+              <Zap className="h-5 w-5 text-amber-200 drop-shadow-[0_0_12px_rgba(255,184,77,0.45)]" />
             </div>
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 pt-4">
               <div className="chain-node">
@@ -457,7 +457,7 @@ function App() {
       </div>
 
       {/* Footer Bar */}
-      <div className="relative z-10 flex h-9 w-full items-center justify-end border-t border-white/10 bg-[#050b0d]/80 px-6 backdrop-blur-xl">
+      <div className="relative z-10 flex h-9 w-full items-center justify-end border-t border-cyan-200/15 bg-[#03040a]/86 px-6 backdrop-blur-xl">
         <a 
           href="https://x.com/kaptan_web3" 
           target="_blank" 

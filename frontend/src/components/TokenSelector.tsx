@@ -137,7 +137,7 @@ export default function TokenSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-slate-700/50 border border-white/10 rounded-lg px-4 py-3 text-white flex items-center justify-between hover:bg-slate-700/70 transition-colors"
+        className="flex w-full items-center justify-between rounded-lg border border-cyan-200/[0.18] bg-white/[0.055] px-4 py-3 text-white transition-colors hover:border-cyan-200/35 hover:bg-cyan-200/10"
       >
         {selectedToken ? (
           <div className="flex items-center">
@@ -165,7 +165,7 @@ export default function TokenSelector({
       
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full bg-slate-800/95 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl overflow-hidden">
+        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-cyan-200/20 bg-[#070b1c]/95 shadow-2xl backdrop-blur-xl">
           {/* Search */}
           <div className="p-3 border-b border-white/10">
             <input
@@ -173,7 +173,7 @@ export default function TokenSelector({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search token name or address"
-              className="w-full bg-slate-700/50 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3ABEFF]"
+              className="w-full rounded-lg border border-cyan-200/[0.18] bg-white/[0.055] px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-200/40"
               autoFocus
             />
           </div>

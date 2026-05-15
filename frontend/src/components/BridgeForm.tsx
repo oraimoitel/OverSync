@@ -1164,7 +1164,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
           <div className="pt-4">
             <button
               onClick={handleReset}
-              className="button-hover-scale w-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-200 py-3 font-semibold text-[#061013] shadow-[0_18px_44px_rgba(45,212,191,0.18)] transition"
+              className="button-hover-scale brand-cta w-full rounded-full py-3 font-semibold transition"
             >
               New Bridge
             </button>
@@ -1174,13 +1174,13 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="mb-1 flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Bridge console</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/55">Bridge console</p>
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" className="rounded-full border border-white/10 bg-white/[0.045] p-2 text-slate-400 transition hover:border-cyan-200/25 hover:bg-white/[0.075] hover:text-cyan-100" title="Refresh quote">
+              <button type="button" className="rounded-full border border-cyan-200/15 bg-white/[0.055] p-2 text-slate-300 transition hover:border-cyan-200/35 hover:bg-cyan-200/10 hover:text-cyan-50" title="Refresh quote">
                 <RefreshCw className="h-4 w-4" />
               </button>
-              <button type="button" className="rounded-full border border-white/10 bg-white/[0.045] p-2 text-slate-400 transition hover:border-cyan-200/25 hover:bg-white/[0.075] hover:text-cyan-100" title="Bridge settings">
+              <button type="button" className="rounded-full border border-cyan-200/15 bg-white/[0.055] p-2 text-slate-300 transition hover:border-cyan-200/35 hover:bg-cyan-200/10 hover:text-cyan-50" title="Bridge settings">
                 <Settings2 className="h-4 w-4" />
               </button>
             </div>
@@ -1188,7 +1188,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
 
           {/* From Section */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">You pay</label>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/55">You pay</label>
             <div className="token-input-panel rounded-2xl p-3 input-container">
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1217,7 +1217,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
                     setAmount(e.target.value);
                   }}
                   placeholder="0.0"
-                  className="min-w-0 flex-1 bg-transparent text-2xl font-semibold tracking-tight text-white outline-none placeholder:text-slate-600"
+                  className="min-w-0 flex-1 bg-transparent text-2xl font-semibold tracking-tight text-white outline-none placeholder:text-slate-500"
                 />
                 <div className="flex shrink-0 gap-1">
                   <button
@@ -1227,7 +1227,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
                       console.log('🔘 50% Button clicked:', { balance, newAmount });
                       setAmount(newAmount);
                     }}
-                    className="rounded-full border border-cyan-300/15 px-2.5 py-1 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-300/10"
+                    className="rounded-full border border-cyan-200/25 bg-cyan-200/[0.08] px-2.5 py-1 text-xs font-semibold text-cyan-100 transition hover:border-cyan-100/40 hover:bg-cyan-200/15"
                   >
                     50%
                   </button>
@@ -1237,7 +1237,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
                       console.log('🔘 MAX Button clicked:', { balance });
                       setAmount(balance);
                     }}
-                    className="rounded-full border border-cyan-300/15 px-2.5 py-1 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-300/10"
+                    className="rounded-full border border-cyan-200/25 bg-cyan-200/[0.08] px-2.5 py-1 text-xs font-semibold text-cyan-100 transition hover:border-cyan-100/40 hover:bg-cyan-200/15"
                   >
                     Max
                   </button>
@@ -1257,7 +1257,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
             <button
               type="button"
               onClick={handleSwapDirection}
-              className="button-hover-scale rounded-full border border-cyan-200/20 bg-[#081519] p-2.5 text-cyan-100 shadow-[0_14px_36px_rgba(0,0,0,0.35)] transition hover:border-cyan-200/40 hover:bg-[#0d2025]"
+              className="button-hover-scale rounded-full border border-cyan-200/35 bg-[#081029] p-2.5 text-cyan-50 shadow-[0_14px_38px_rgba(0,0,0,0.4),0_0_24px_rgba(0,226,255,0.12)] transition hover:border-cyan-100/55 hover:bg-[#0d1735]"
             >
               <ArrowDownUp className="h-5 w-5" />
             </button>
@@ -1265,7 +1265,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
 
           {/* To Section */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">You receive</label>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/55">You receive</label>
             <div className="token-input-panel rounded-2xl p-3 input-container">
               <div className="mb-2 flex items-center gap-2">
                 <img
@@ -1350,7 +1350,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
           
           {/* Status Message */}
           {statusMessage && (
-            <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-center">
+            <div className="rounded-2xl border border-cyan-200/30 bg-cyan-200/[0.12] p-3 text-center">
               <div className="font-medium text-cyan-100">{statusMessage}</div>
             </div>
           )}
@@ -1361,7 +1361,7 @@ export default function BridgeForm({ ethAddress, stellarAddress }: BridgeFormPro
             disabled={isSubmitting || !amount || !walletsConnected}
             className={`button-hover-scale w-full rounded-full py-3.5 font-semibold transition-all ${
               walletsConnected
-                ? 'bg-gradient-to-r from-cyan-300 to-emerald-200 text-[#061013] shadow-[0_18px_44px_rgba(45,212,191,0.18)] hover:shadow-[0_20px_54px_rgba(45,212,191,0.24)]'
+                ? 'brand-cta'
                 : 'cursor-not-allowed border border-white/5 bg-slate-700/45 text-slate-400'
             }`}
           >
