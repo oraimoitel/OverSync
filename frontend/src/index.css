@@ -39,9 +39,7 @@ body {
 
 body {
   min-height: 100vh;
-  background: linear-gradient(180deg, #050713 0%, #03040a 48%, #05050b 100%);
-  background-attachment: fixed;
-  background-size: cover;
+  background: #03040a;
 }
 
 body::selection {
@@ -54,52 +52,22 @@ body::selection {
   overflow-x: hidden;
 }
 
-.app-shell::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -20;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(17, 24, 50, 0.54) 0%, rgba(3, 4, 10, 0.18) 42%, rgba(3, 4, 10, 0.72) 100%);
-  opacity: 1;
-}
-
 .background-depth {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   opacity: 1;
 }
 
 .dark-veil-layer {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  opacity: 0.92;
-  filter: saturate(0.84) contrast(1.08) brightness(0.9);
-  mix-blend-mode: screen;
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.98), rgba(0, 0, 0, 0.92) 62%, rgba(0, 0, 0, 0.5) 100%);
-}
-
-.background-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(142, 160, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(142, 160, 255, 0.018) 1px, transparent 1px);
-  background-size: 80px 80px;
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.28) 58%, transparent 92%);
-}
-
-.background-scanline {
-  position: absolute;
-  inset: 0;
-  background:
-    repeating-linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.018) 0,
-      rgba(255, 255, 255, 0.018) 1px,
-      transparent 1px,
-      transparent 10px
-    );
-  opacity: 0.08;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  opacity: 0.64;
+  filter: saturate(0.72) contrast(1.05) brightness(0.72);
+  mix-blend-mode: normal;
 }
 
 /* Input number styling */

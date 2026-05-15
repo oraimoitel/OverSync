@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import BridgeForm from './components/BridgeForm'
+import DarkVeil from './components/DarkVeil'
 
 import TransactionHistory from './components/TransactionHistory'
 
@@ -459,8 +460,18 @@ function App() {
       </main>
 
       <div className="background-depth pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="background-grid" />
-        <div className="background-scanline" />
+        <div className="dark-veil-layer">
+          <DarkVeil
+            hueShift={0}
+            noiseIntensity={0.008}
+            scanlineIntensity={0.035}
+            scanlineFrequency={1.8}
+            speed={0.9}
+            warpAmount={0.08}
+            resolutionScale={0.72}
+            verticalOffset={0.42}
+          />
+        </div>
       </div>
 
       {/* Footer Bar */}
