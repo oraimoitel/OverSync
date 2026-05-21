@@ -5,13 +5,9 @@ interface Props {
 }
 
 /**
- * Shown only when the app is in mainnet mode. Explains that the on-chain
- * stack on mainnet is the v1 single-relayer bridge, while the v2 decentralized
- * HTLC + multi-resolver architecture is live on testnet and scheduled to land
- * on mainnet in Q1 2027 (after audit).
- *
- * This keeps users informed about which trust model applies to their funds
- * without exaggerating the current decentralization guarantees on mainnet.
+ * Shown only when the app is in mainnet mode (requires VITE_MAINNET_ENABLED=true).
+ * Explains that the on-chain stack on mainnet is the v1 single-relayer bridge,
+ * while v2 is live on testnet. Not rendered in the default testnet-only public UI.
  */
 export default function MainnetVersionBanner({ networkState }: Props) {
   if (networkState.mode !== 'mainnet') return null;

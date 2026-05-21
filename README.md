@@ -15,23 +15,22 @@ the beneficiary or refund permissionlessly to the user. There is no
 state in which user funds are stranded under operator control.
 
 > **Status (May 2026).** v2 is the live design and is **deployed on
-> testnet** (Sepolia + Stellar testnet). Mainnet continues to run the
-> v1 single-relayer stack until v2 completes its independent audit
-> (Q1 2027). The frontend explicitly surfaces which network you are
-> using and lets you switch to the v2 testnet experience in one
-> click. See [`ROADMAP.md`](ROADMAP.md) for the audit-first launch
-> plan and [`docs/REVIEW_RESPONSE.md`](docs/REVIEW_RESPONSE.md) for
-> the full response to v1 reviewer feedback.
+> testnet** (Sepolia + Stellar testnet). The public frontend is
+> **testnet-only** — the network selector shows **Mainnet Coming** and
+> does not expose the legacy v1 mainnet path until v2 completes its
+> independent audit (Q1 2027). Set `VITE_MAINNET_ENABLED=true` only
+> when re-enabling mainnet after audit. See [`ROADMAP.md`](ROADMAP.md)
+> for the audit-first launch plan and [`docs/REVIEW_RESPONSE.md`](docs/REVIEW_RESPONSE.md)
+> for the full response to v1 reviewer feedback.
 
-> **Important mainnet caveat.** The current mainnet UI still routes
-> through the legacy v1 single-relayer implementation. That path keeps
-> the historical Stellar claimable-balance code in
-> [`stellar/src/claimable-balance.ts`](stellar/src/claimable-balance.ts)
-> for compatibility, and it should not be evaluated as the v2 trust
-> model. The v2 architecture reviewers should assess is the testnet
-> Soroban HTLC deployment listed below; v2 mainnet is intentionally
-> gated on fuzz/differential tests, multisig governance, and external
-> audit.
+> **Legacy v1 mainnet (code only).** The v1 single-relayer stack and
+> Stellar claimable-balance path remain in the repository for reference
+> ([`stellar/src/claimable-balance.ts`](stellar/src/claimable-balance.ts))
+> but are **not offered in the public UI** while `VITE_MAINNET_ENABLED`
+> is unset or `false`. Reviewers and users should evaluate the v2
+> Soroban HTLC testnet deployment listed below; v2 mainnet is
+> intentionally gated on fuzz/differential tests, multisig governance,
+> and external audit.
 
 ---
 
@@ -79,7 +78,7 @@ source code or block explorer.
 |---|---|---|---|
 | Reference coordinator | Hosted on Render | [`coordinator/`](coordinator/) | SQLite-backed order book, REST + WebSocket, never holds keys that can move user funds |
 | Reference resolver | Open-source runner + Docker image | [`resolver/`](resolver/) | Anyone who staked in the registry can run it |
-| Bridge frontend | Deployed on Vercel | [`frontend/`](frontend/) | Mainnet v1 + testnet v2 in one UI with network banner + RefundDialog |
+| Bridge frontend | Deployed on Vercel | [`frontend/`](frontend/) | **Testnet-only** public UI (`VITE_MAINNET_ENABLED=false`); **Mainnet Coming** badge; v2 flow on Sepolia + Stellar testnet |
 | **Refund watchdog** | Always-on background scanner | [`relayer/src/refund-watchdog.ts`](relayer/src/refund-watchdog.ts) | Scans the order map every 60s; refunds any XLM→ETH swap pending > 5 min |
 | **Event listeners** | Block-by-block polling | [`relayer/src/contract-event-poller.ts`](relayer/src/contract-event-poller.ts) | Stateless `queryFilter` polling, immune to load-balanced public RPC `filter not found` failures |
 
@@ -152,7 +151,7 @@ The architectural rationale and exact code paths are in
 
 ## v1 vs v2 at a glance
 
-| Concern | v1 (current mainnet) | v2 (live testnet, mainnet Q1 2027) |
+| Concern | v1 (legacy — UI disabled) | v2 (live testnet, mainnet Q1 2027) |
 |---|---|---|
 | Stellar settlement | Claimable balance with unconditional claimants — coordinator-custodial | [Soroban HTLC contract](soroban/contracts/htlc/src/lib.rs) — sha256 hashlock + timelock, non-custodial |
 | Ethereum settlement | Three overlapping contracts (`HTLCBridge`, `MainnetHTLC`, `EscrowFactory`); resolver allowlist not enforced | One canonical [`HTLCEscrow`](contracts/contracts/v2/HTLCEscrow.sol) + [`ResolverRegistry`](contracts/contracts/v2/ResolverRegistry.sol) |
@@ -175,12 +174,12 @@ OverSync-1nchFusion/
 │   └── contracts/resolver-registry/
 ├── contracts/                    # Solidity (Hardhat)
 │   ├── contracts/v2/             # Canonical HTLCEscrow + ResolverRegistry (v2)
-│   └── contracts/                # Legacy v1 (still backing mainnet)
+│   └── contracts/                # Legacy v1 (retained in repo; UI gated off)
 ├── packages/sdk/                 # @oversync/sdk — shared TS layer
 ├── coordinator/                  # v2 coordinator (SQLite + REST/WS)
 ├── resolver/                     # Open-source resolver runner + Docker
 ├── relayer/                      # v1 relayer (+ refund watchdog, polling listeners)
-├── frontend/                     # React + Vite dApp (mainnet v1 + testnet v2)
+├── frontend/                     # React + Vite dApp (public: testnet-only; mainnet via env flag)
 ├── docs/                         # Trust model, security, deploy, resolvers, differentiation
 └── .github/workflows/            # CI for TS + Rust + Solidity
 ```
@@ -243,7 +242,7 @@ threat model.
 | Document | What it covers |
 |---|---|
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Full technical architecture: invariants, sequence diagrams, refund stack, failure catalogue, cryptographic primitives, operational characteristics, auditor checklist |
-| [`ROADMAP.md`](ROADMAP.md) | Milestone-by-milestone delivery plan with verifiable artefacts; current hybrid (testnet v2 / mainnet v1) status |
+| [`ROADMAP.md`](ROADMAP.md) | Milestone-by-milestone delivery plan with verifiable artefacts; testnet v2 live, mainnet UI gated until audit |
 | [`docs/TRUST_MODEL.md`](docs/TRUST_MODEL.md) | Non-custodial proofs and per-actor threat analysis |
 | [`docs/DIFFERENTIATION.md`](docs/DIFFERENTIATION.md) | Comparison with CCTP v2, Axelar ITS, Allbridge; where OverSync is the right vs wrong tool |
 | [`docs/TRACTION.md`](docs/TRACTION.md) | Go-to-market, KPIs we publish, partnership pipeline |

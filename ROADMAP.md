@@ -18,14 +18,17 @@ Legend: ✅ shipped · 🛠 in progress · 🗓 scheduled · ⏳ depends on prio
 
 ## Current production status (May 2026)
 
-| Environment | Bridge stack | Decentralization | Live contracts |
+| Environment | Bridge stack | Public UI | Live contracts |
 |---|---|---|---|
-| **Testnet** (Sepolia + Stellar testnet) | **v2 — decentralized HTLC + open resolver network** | Multi-resolver, on-chain hashlock/timelock, no privileged custody | EVM: `HTLCEscrow` `0xb352339B…bB178`, `ResolverRegistry` `0x7D9ce70A…1D99`. Soroban: `CDIKSJK…6JK`, `CBSR7Z4…WGF` |
-| **Mainnet** (Ethereum + Stellar public) | **v1 — single-relayer bridge** (legacy) | Trusted relayer; transparent on-chain, but custody during transit | EVM HTLC: `0x87372d4b…b73E`; 1inch escrow factory: `0xa7bcb4ea…df99a` |
+| **Testnet** (Sepolia + Stellar testnet) | **v2 — decentralized HTLC + open resolver network** | **Active** — default and only public mode | EVM: `HTLCEscrow` `0xb352339B…bB178`, `ResolverRegistry` `0x7D9ce70A…1D99`. Soroban: `CDIKSJK…6JK`, `CBSR7Z4…WGF` |
+| **Mainnet** (Ethereum + Stellar public) | **v1 — single-relayer bridge** (legacy, retained in repo) | **Disabled** — frontend shows **Mainnet Coming** (`VITE_MAINNET_ENABLED=false`) | v1 EVM HTLC: `0x87372d4b…b73E`; 1inch escrow factory: `0xa7bcb4ea…df99a` |
 
-This split is deliberate. We refuse to push the v2 stack to mainnet
-before a clean audit, and we refuse to retire the working v1 bridge in
-the meantime — see "Mainnet launch (Q1 2027)" below.
+The public dApp is **testnet-only** until v2 passes audit and mainnet
+launch (Q1 2027 target). Legacy v1 mainnet contracts may still exist
+on-chain from earlier deployments, but the UI does not route new users
+through that path. Re-enable the mainnet toggle only after audit by
+setting `VITE_MAINNET_ENABLED=true` in the frontend env (see
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 
 ---
 

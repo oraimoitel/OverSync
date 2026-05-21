@@ -519,8 +519,9 @@ path, so the refund amount logic and signing key are identical.
 
 In v2 the XLM→ETH path also goes through the Soroban HTLC, so layer
 6.1 alone is sufficient on both directions and layers 6.3 + 6.4 become
-redundant. They remain in place during the hybrid period as defence-in-
-depth for the v1 mainnet flow.
+redundant. Layers 6.3 + 6.4 remain in the relayer as defence-in-depth
+for any legacy v1 mainnet deployments; the public frontend does not
+expose mainnet while `VITE_MAINNET_ENABLED=false`.
 
 ---
 
@@ -721,6 +722,7 @@ is in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 | Resolver registry | None | **Shipped** on both chains | `contracts/v2/ResolverRegistry.sol`, `soroban/contracts/resolver-registry/`, 6 Hardhat tests |
 | Coordinator | 3,276-line `relayer/src/index.ts` | **Shipped** modular rewrite | `coordinator/`, 4 service tests |
 | Frontend refund | Mocked | **Shipped** real on-chain refund | `frontend/src/features/refund/RefundDialog.tsx` |
+| Public network UI | v1 mainnet + testnet toggle | **Testnet-only** (`Mainnet Coming` badge; `VITE_MAINNET_ENABLED`) | `frontend/src/App.tsx`, `frontend/src/config/networks.ts` |
 | Audit | None | **Pending** independent audit; pre-audit hardening shipped | `docs/SECURITY.md` |
 | Mainnet | v1 deployed without audit (not recommended) | **Not deployed** — testnet only until post-audit | `docs/DEPLOYMENT.md` |
 

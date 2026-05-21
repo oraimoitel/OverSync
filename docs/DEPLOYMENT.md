@@ -115,6 +115,25 @@ pnpm build
 # Serve dist/ via any static host (Vercel, Cloudflare Pages, Netlify).
 ```
 
+### Frontend network mode
+
+By default the public UI is **testnet-only**:
+
+```
+VITE_NETWORK=testnet
+VITE_MAINNET_ENABLED=false
+```
+
+When `VITE_MAINNET_ENABLED` is unset or `false`:
+
+- The navbar shows **Testnet** (active) and a disabled **Mainnet Coming** control.
+- `?network=mainnet` in the URL is rewritten to `testnet`.
+- All bridge, history, and refund flows use Sepolia + Stellar testnet (v2).
+
+Set `VITE_MAINNET_ENABLED=true` only when deliberately re-enabling
+mainnet after v2 audit and mainnet contract deployment. Until then,
+keep it `false` on Vercel / production hosts.
+
 ## Verifying contracts on Etherscan
 
 ```bash
@@ -125,7 +144,8 @@ pnpm exec hardhat verify --network sepolia <REGISTRY_ADDRESS> <STAKE_ASSET> <MIN
 
 ## Mainnet rollout checklist
 
-Before flipping `NETWORK_MODE=mainnet`:
+Before setting `VITE_MAINNET_ENABLED=true` and flipping backend
+`NETWORK_MODE=mainnet`:
 
 - [ ] Both HTLC contracts independently audited (see [`SECURITY.md`](SECURITY.md))
 - [ ] `ResolverRegistry.owner` transferred to a 2/3 multisig

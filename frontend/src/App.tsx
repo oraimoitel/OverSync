@@ -7,6 +7,7 @@ import TransactionHistory from './components/TransactionHistory'
 import { ToastContainer, useToast } from './components/Toast'
 import { useFreighter } from './hooks/useFreighter'
 import { useNetworkMode } from './lib/useNetworkMode'
+import { isMainnetEnabled } from './config/networks'
 import NetworkMismatchBanner from './components/NetworkMismatchBanner'
 import MainnetVersionBanner from './components/MainnetVersionBanner'
 import {
@@ -132,6 +133,10 @@ function App() {
   const currentNetwork = networkState.mode;
 
   const toggleNetwork = async () => {
+    if (!isMainnetEnabled()) {
+      return;
+    }
+
     const newNetwork = currentNetwork === 'testnet' ? 'mainnet' : 'testnet';
     const result = await networkState.setMode(newNetwork);
 
@@ -260,20 +265,40 @@ function App() {
             </a>
           </nav>
 
-          {/* Network Toggle Button */}
-          <button
-            onClick={toggleNetwork}
-            className={`network-pill px-3 py-2 text-sm font-semibold transition-all duration-200 md:px-4 ${
-              currentNetwork === 'mainnet'
-                ? 'network-mainnet'
-                : 'network-testnet'
-            }`}
-          >
-            <div className={`w-2 h-2 rounded-full ${
-              currentNetwork === 'mainnet' ? 'bg-cyan-300 shadow-[0_0_16px_rgba(0,226,255,0.65)]' : 'bg-indigo-300 shadow-[0_0_16px_rgba(124,140,255,0.48)]'
-            }`}></div>
-            {currentNetwork === 'mainnet' ? 'Mainnet' : 'Testnet'}
-          </button>
+          {/* Network selector — testnet-only until v2 mainnet launch */}
+          {isMainnetEnabled() ? (
+            <button
+              onClick={toggleNetwork}
+              className={`network-pill px-3 py-2 text-sm font-semibold transition-all duration-200 md:px-4 ${
+                currentNetwork === 'mainnet'
+                  ? 'network-mainnet'
+                  : 'network-testnet'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${
+                currentNetwork === 'mainnet' ? 'bg-cyan-300 shadow-[0_0_16px_rgba(0,226,255,0.65)]' : 'bg-indigo-300 shadow-[0_0_16px_rgba(124,140,255,0.48)]'
+              }`}></div>
+              {currentNetwork === 'mainnet' ? 'Mainnet' : 'Testnet'}
+            </button>
+          ) : (
+            <div className="network-pill-group inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1">
+              <span
+                className="network-pill network-testnet px-3 py-1.5 text-sm font-semibold md:px-4"
+                aria-current="true"
+              >
+                <div className="w-2 h-2 rounded-full bg-indigo-300 shadow-[0_0_16px_rgba(124,140,255,0.48)]"></div>
+                Testnet
+              </span>
+              <button
+                type="button"
+                disabled
+                title="v2 mainnet launches after independent audit (Q1 2027)"
+                className="network-pill network-coming cursor-not-allowed px-3 py-1.5 text-sm font-semibold md:px-4"
+              >
+                Mainnet Coming
+              </button>
+            </div>
+          )}
           
           {/* Connect Wallet Button */}
           <div className="relative">

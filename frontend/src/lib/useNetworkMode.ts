@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import freighterApi from '@stellar/freighter-api';
-import { isTestnet } from '../config/networks';
+import { isMainnetEnabled, isTestnet, resolveNetworkMode } from '../config/networks';
 
 export type NetworkMode = 'testnet' | 'mainnet';
 
@@ -20,7 +20,7 @@ function readModeFromUrl(): NetworkMode {
   }
   const url = new URLSearchParams(window.location.search).get('network');
   if (url === 'mainnet' || url === 'testnet') {
-    return url;
+    return resolveNetworkMode(url);
   }
   return isTestnet() ? 'testnet' : 'mainnet';
 }
@@ -85,6 +85,19 @@ export function useNetworkMode(opts: {
     const handler = () => setLocalMode(readModeFromUrl());
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
+  }, []);
+
+  // When mainnet is disabled, strip ?network=mainnet from the URL so bookmarks stay on testnet.
+  useEffect(() => {
+    if (typeof window === 'undefined' || isMainnetEnabled()) {
+      return;
+    }
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('network') === 'mainnet') {
+      url.searchParams.set('network', 'testnet');
+      window.history.replaceState({}, '', url.toString());
+      setLocalMode('testnet');
+    }
   }, []);
 
   const refreshMetamask = useCallback(async () => {
@@ -196,6 +209,10 @@ export function useNetworkMode(opts: {
 
   const setMode = useCallback(
     async (next: NetworkMode): Promise<{ ok: boolean; reason?: string }> => {
+      if (next === 'mainnet' && !isMainnetEnabled()) {
+        return { ok: false, reason: 'mainnet-disabled' };
+      }
+
       if (next === mode) {
         return { ok: true };
       }

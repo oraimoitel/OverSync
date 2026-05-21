@@ -2,6 +2,44 @@
  * Network Configuration for FusionBridge
  */
 
+export type AppNetworkMode = 'mainnet' | 'testnet';
+
+/**
+ * When false, the dApp is testnet-only. Mainnet toggle shows "Mainnet Coming".
+ * Re-enable with VITE_MAINNET_ENABLED=true (post v2 audit / mainnet launch).
+ */
+export const isMainnetEnabled = (): boolean => {
+  const raw = (import.meta as any).env?.VITE_MAINNET_ENABLED;
+  return raw === 'true' || raw === true;
+};
+
+/** Clamp requested mode when mainnet is temporarily disabled. */
+export const resolveNetworkMode = (requested: AppNetworkMode): AppNetworkMode => {
+  if (requested === 'mainnet' && !isMainnetEnabled()) {
+    return 'testnet';
+  }
+  return requested;
+};
+
+function readNetworkNameFromEnvOrUrl(): AppNetworkMode {
+  let networkName: AppNetworkMode = 'testnet';
+
+  if (typeof window !== 'undefined') {
+    const urlNetwork = new URLSearchParams(window.location.search).get('network');
+    if (urlNetwork === 'mainnet' || urlNetwork === 'testnet') {
+      networkName = urlNetwork;
+      return resolveNetworkMode(networkName);
+    }
+  }
+
+  const envNetwork = (import.meta as any).env?.VITE_NETWORK;
+  if (envNetwork === 'mainnet' || envNetwork === 'testnet') {
+    networkName = envNetwork;
+  }
+
+  return resolveNetworkMode(networkName);
+}
+
 export interface NetworkConfig {
   id: number;
   name: string;
@@ -149,26 +187,7 @@ export const FAUCETS = {
 
 // Environment-based configuration with URL parameter support
 export const getCurrentNetwork = () => {
-  let networkName = 'testnet';
-  
-  // Check URL parameters first (highest priority)
-  if (typeof window !== 'undefined') {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlNetwork = urlParams.get('network');
-    if (urlNetwork === 'mainnet' || urlNetwork === 'testnet') {
-      networkName = urlNetwork;
-      return {
-        ethereum: ETHEREUM_NETWORKS[networkName === 'mainnet' ? 'mainnet' : 'sepolia'],
-        stellar: STELLAR_NETWORKS[networkName === 'mainnet' ? 'mainnet' : 'testnet'],
-      };
-    }
-  }
-  
-  // Fallback to environment variable (lower priority)
-  const envNetwork = (import.meta as any).env?.VITE_NETWORK;
-  if (envNetwork === 'mainnet' || envNetwork === 'testnet') {
-    networkName = envNetwork;
-  }
+  const networkName = readNetworkNameFromEnvOrUrl();
   return {
     ethereum: ETHEREUM_NETWORKS[networkName === 'mainnet' ? 'mainnet' : 'sepolia'],
     stellar: STELLAR_NETWORKS[networkName === 'mainnet' ? 'mainnet' : 'testnet'],
@@ -176,22 +195,7 @@ export const getCurrentNetwork = () => {
 };
 
 export const getContractAddresses = () => {
-  let networkName = 'testnet';
-  
-  // Check URL parameters first
-  if (typeof window !== 'undefined') {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlNetwork = urlParams.get('network');
-    if (urlNetwork === 'mainnet' || urlNetwork === 'testnet') {
-      networkName = urlNetwork;
-    }
-  }
-  
-  // Fallback to environment variable
-  if (networkName === 'testnet') {
-    networkName = (import.meta as any).env?.VITE_NETWORK || 'testnet';
-  }
-  
+  const networkName = readNetworkNameFromEnvOrUrl();
   return {
     ethereum: CONTRACT_ADDRESSES.ethereum[networkName === 'mainnet' ? 'mainnet' : 'sepolia'],
     stellar: CONTRACT_ADDRESSES.stellar[networkName === 'mainnet' ? 'mainnet' : 'testnet'],
@@ -209,24 +213,4 @@ export const getFaucets = () => {
   };
 };
 
-export const isTestnet = () => {
-  let networkName = 'testnet';
-  
-  // Check URL parameters first (highest priority)
-  if (typeof window !== 'undefined') {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlNetwork = urlParams.get('network');
-    if (urlNetwork === 'mainnet' || urlNetwork === 'testnet') {
-      networkName = urlNetwork;
-      return networkName !== 'mainnet';
-    }
-  }
-  
-  // Fallback to environment variable (lower priority)
-  const envNetwork = (import.meta as any).env?.VITE_NETWORK;
-  if (envNetwork === 'mainnet' || envNetwork === 'testnet') {
-    networkName = envNetwork;
-  }
-  
-  return networkName !== 'mainnet';
-}; 
+export const isTestnet = () => readNetworkNameFromEnvOrUrl() !== 'mainnet'; 

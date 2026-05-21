@@ -211,8 +211,10 @@ What is complete for the resubmission:
 
 What remains intentionally unfinished before v2 mainnet:
 
-- v2 is testnet-first. Mainnet remains on the legacy v1 path until the
-  v2 contracts complete hardening and independent audit.
+- v2 is testnet-first. The public frontend is testnet-only
+  (`VITE_MAINNET_ENABLED=false`); legacy v1 mainnet code remains in
+  the repo but is not exposed in the UI until v2 contracts complete
+  hardening and independent audit.
 - The legacy claimable-balance implementation remains in the repo only
   for v1 compatibility and historical reference; it is not the v2
   trust model.
