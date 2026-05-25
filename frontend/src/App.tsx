@@ -7,6 +7,7 @@ import TransactionHistory from './components/TransactionHistory'
 import { ToastContainer, useToast } from './components/Toast'
 import { useFreighter } from './hooks/useFreighter'
 import { useNetworkMode } from './lib/useNetworkMode'
+import { pingBackendWake } from './lib/wakeBackend'
 import { isMainnetEnabled } from './config/networks'
 import NetworkMismatchBanner from './components/NetworkMismatchBanner'
 import MainnetVersionBanner from './components/MainnetVersionBanner'
@@ -59,6 +60,14 @@ function App() {
 
   // Toast hook
   const toast = useToast();
+
+  // Tell the relayer someone is browsing (keeps pollers attentive, no RPC until swap).
+  useEffect(() => {
+    pingBackendWake();
+    const refreshMs = 4 * 60_000;
+    const id = window.setInterval(pingBackendWake, refreshMs);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!showIntro || !introLogoReady) {

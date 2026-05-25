@@ -5,6 +5,7 @@
 
 import { ethers, Contract, EventLog } from 'ethers';
 import { RELAYER_CONFIG } from './index.js';
+import { startAdaptivePoll, type AdaptivePollHandle } from './adaptive-poll.js';
 
 // Mock CrossChainOrder interface for now
 interface CrossChainOrder {
@@ -46,13 +47,6 @@ interface OrderCreatedEvent {
  * Ethereum Event Listener for HTLCBridge contract
  */
 /**
- * How often we ask the RPC for new blocks. Sepolia produces a block
- * roughly every 12s; 5s polling means we never lag more than one
- * block behind reality while keeping RPC pressure low.
- */
-const POLL_INTERVAL_MS = 5_000;
-
-/**
  * Hard cap on the size of a single `getLogs` window. Public RPCs
  * reject very wide ranges; if the relayer was offline for a long
  * time we walk forward in chunks of this size instead of one giant
@@ -70,12 +64,20 @@ export class EthereumEventListener {
    * even if individual `queryFilter` calls fail.
    */
   private lastProcessedBlock: number = 0;
-  private pollHandle: NodeJS.Timeout | null = null;
+  private pollHandle: AdaptivePollHandle | null = null;
   /** Re-entrancy guard so a slow poll doesn't overlap the next tick. */
   private isPolling: boolean = false;
+  private isActiveFn: () => boolean = () => true;
+  private isAttentiveFn: () => boolean = () => true;
 
   constructor() {
     // Lazy initialization - will be done in startListening()
+  }
+
+  /** Wire idle/active gating before `startListening()`. */
+  configurePolling(opts: { isActive?: () => boolean; isAttentive?: () => boolean }): void {
+    if (opts.isActive) this.isActiveFn = opts.isActive;
+    if (opts.isAttentive) this.isAttentiveFn = opts.isAttentive;
   }
 
   /**
@@ -131,19 +133,19 @@ export class EthereumEventListener {
         // Start from the current head — we only care about NEW orders,
         // not history. Historical orders are surfaced via /api/orders.
         this.lastProcessedBlock = await this.provider!.getBlockNumber();
-        console.log(`📦 Polling from block ${this.lastProcessedBlock} forward (every ${POLL_INTERVAL_MS / 1000}s)`);
+        console.log(
+          `📦 Polling from block ${this.lastProcessedBlock} forward ` +
+          `(active ${RELAYER_CONFIG.activePollIntervalMs / 1000}s / idle ${RELAYER_CONFIG.idlePollIntervalMs / 1000}s)`
+        );
 
-        // Block-by-block polling instead of `contract.on(...)`. The
-        // `on` path uses `eth_newFilter` / `eth_getFilterChanges`,
-        // which load-balanced public RPCs (PublicNode, etc.) do not
-        // track reliably — the filter id is unknown to whichever node
-        // serves the next poll, producing the `filter not found`
-        // errors and silently dropping events. `queryFilter` is
-        // stateless on the RPC side: every tick we just ask for
-        // `getLogs(fromBlock, toBlock)`, which any node can answer.
-        this.pollHandle = setInterval(() => {
-          void this.pollEvents();
-        }, POLL_INTERVAL_MS);
+        this.pollHandle = startAdaptivePoll({
+          label: 'eth-listener',
+          activeIntervalMs: RELAYER_CONFIG.activePollIntervalMs,
+          idleIntervalMs: RELAYER_CONFIG.idlePollIntervalMs,
+          isActive: this.isActiveFn,
+          isAttentive: this.isAttentiveFn,
+          tick: () => this.pollEvents(),
+        });
       }
 
       this.isListening = true;
@@ -167,7 +169,7 @@ export class EthereumEventListener {
 
     try {
       if (this.pollHandle) {
-        clearInterval(this.pollHandle);
+        this.pollHandle.stop();
         this.pollHandle = null;
       }
       this.isListening = false;
@@ -332,6 +334,11 @@ export class EthereumEventListener {
       console.error('❌ Configuration validation failed:', error);
       throw error;
     }
+  }
+
+  /** Trigger an immediate chain scan (e.g. after a new order is stored). */
+  wakePolling(): void {
+    this.pollHandle?.wake();
   }
 
   /**

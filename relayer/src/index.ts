@@ -12,7 +12,19 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { ethers } from 'ethers';
 import { startRefundWatchdog } from './refund-watchdog.js';
-import { startContractEventPoller, type ContractEventBinding } from './contract-event-poller.js';
+import { startContractEventPoller, type ContractEventBinding, type ContractEventPollerHandle } from './contract-event-poller.js';
+import { startAdaptivePoll, type AdaptivePollHandle } from './adaptive-poll.js';
+import { fetchIncomingEthPayments } from './eth-incoming-monitor.js';
+import {
+  hasActiveBridgeOrders,
+  hasAwaitingXlmPayment,
+  hasPendingRelayerEscrow,
+} from './order-poll-utils.js';
+import {
+  configureSitePresence,
+  hasRecentVisitor,
+  markVisitorPresent,
+} from './site-presence.js';
 
 // Load environment variables from root directory
 config({ path: resolve(process.cwd(), '../.env') });
@@ -353,11 +365,29 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
   ]);
 }
 
+function resolveEthereumRpcUrl(): string {
+  if (DEFAULT_NETWORK_MODE === 'testnet') {
+    return (
+      process.env.SEPOLIA_RPC_URL ||
+      process.env.ETHEREUM_RPC_URL ||
+      'https://ethereum-sepolia-rpc.publicnode.com'
+    );
+  }
+  return (
+    process.env.MAINNET_RPC_URL ||
+    process.env.ETHEREUM_RPC_URL ||
+    'https://ethereum-rpc.publicnode.com'
+  );
+}
+
 // Relayer configuration from environment variables
 export const RELAYER_CONFIG = {
   // Service settings
   port: Number(process.env.RELAYER_PORT || process.env.PORT) || 3001,
-      pollInterval: Number(process.env.RELAYER_POLL_INTERVAL) || 15000, // Increased from 5s to 15s
+  pollInterval: Number(process.env.RELAYER_POLL_INTERVAL) || 15_000,
+  activePollIntervalMs: Number(process.env.RELAYER_ACTIVE_POLL_INTERVAL_MS) || 15_000,
+  idlePollIntervalMs: Number(process.env.RELAYER_IDLE_POLL_INTERVAL_MS) || 120_000,
+  visitorTtlMs: Number(process.env.RELAYER_VISITOR_TTL_MS) || 5 * 60_000,
   retryAttempts: Number(process.env.RELAYER_RETRY_ATTEMPTS) || 3,
   retryDelay: Number(process.env.RELAYER_RETRY_DELAY) || 2000,
   
@@ -371,7 +401,7 @@ export const RELAYER_CONFIG = {
   // Ethereum configuration
   ethereum: {
     network: process.env.ETHEREUM_NETWORK || 'mainnet',
-    rpcUrl: process.env.ETHEREUM_RPC_URL || 'https://ethereum-rpc.publicnode.com',
+    rpcUrl: resolveEthereumRpcUrl(),
     // ✅ Dynamic contract addresses based on network
     contractAddress: getHtlcBridgeAddress(DEFAULT_NETWORK_MODE), // For EthereumEventListener (testnet only)
     escrowFactoryAddress: getEscrowFactoryAddress(DEFAULT_NETWORK_MODE), // For transactions (mainnet + testnet)
@@ -498,6 +528,32 @@ async function initializeRelayer() {
   if (RELAYER_CONFIG.security.maintenanceMode) {
     console.warn('🔧 Maintenance mode is active');
   }
+
+  // Global order storage (in production this would be a database).
+  // Declared early so chain pollers can skip RPC when nothing is in flight.
+  const activeOrders = new Map<string, any>();
+  const chainPollers: AdaptivePollHandle[] = [];
+  let escrowFactoryPoller: ContractEventPollerHandle | null = null;
+
+  const wakeChainPollers = (): void => {
+    ethereumListener.wakePolling();
+    escrowFactoryPoller?.wake();
+    for (const poller of chainPollers) {
+      poller.wake();
+    }
+  };
+
+  const storeActiveOrder = (orderId: string, orderData: Record<string, unknown>): void => {
+    activeOrders.set(orderId, orderData);
+    wakeChainPollers();
+  };
+
+  configureSitePresence(RELAYER_CONFIG.visitorTtlMs);
+
+  const handleVisitorWake = (): void => {
+    markVisitorPresent();
+    wakeChainPollers();
+  };
   
   // Start gas price tracking
   try {
@@ -526,6 +582,10 @@ async function initializeRelayer() {
       console.log('🏗️ Mainnet mode: Skipping EthereumEventListener (using 1inch EscrowFactory)');
     } else {
       console.log('🔄 Testnet mode: Starting EthereumEventListener for HTLCBridge monitoring');
+      ethereumListener.configurePolling({
+        isActive: () => hasActiveBridgeOrders(activeOrders),
+        isAttentive: () => hasRecentVisitor(),
+      });
       await ethereumListener.startListening();
     }
   } catch (error) {
@@ -547,9 +607,6 @@ async function initializeRelayer() {
     console.log('🧪 TESTNET HTLC Bridge (Event Listener):', getHtlcBridgeAddress('testnet'));
     console.log('🧪 TESTNET Escrow Factory:', getEscrowFactoryAddress('testnet'));
   }
-    
-  // Global order storage (in production this would be a database)
-const activeOrders = new Map();
 
   // DEBUG: Simple transaction test
   app.get('/api/test-transaction', (req, res) => {
@@ -580,6 +637,17 @@ const activeOrders = new Map();
   });
   app.get('/api/test', (req, res) => {
     res.json({ message: 'API endpoints are working!', timestamp: new Date().toISOString() });
+  });
+
+  // Frontend calls this on page load so pollers stay attentive while
+  // someone is browsing (zero RPC until an order actually exists).
+  app.post('/api/wake', (_req, res) => {
+    handleVisitorWake();
+    res.status(204).end();
+  });
+  app.get('/api/wake', (_req, res) => {
+    handleVisitorWake();
+    res.status(204).end();
   });
 
   // GET /api/prices
@@ -780,7 +848,7 @@ const activeOrders = new Map();
               contractType: 'MOCK_1INCH_ESCROW_FACTORY'
             };
             
-            activeOrders.set(orderId, orderData);
+            storeActiveOrder(orderId, orderData);
             
             return res.json({
               success: true,
@@ -881,7 +949,7 @@ const activeOrders = new Map();
           };
           
           // ✅ Add networkMode for XLM→ETH processing
-          activeOrders.set(orderId, {
+          storeActiveOrder(orderId, {
             ...orderData,
             networkMode: requestNetwork
           });
@@ -980,7 +1048,7 @@ const activeOrders = new Map();
         };
 
         // Store order
-        activeOrders.set(orderId, {
+        storeActiveOrder(orderId, {
           ...orderData,
           ethAddress: normalizedEthAddress,
           stellarAddress,
@@ -1094,8 +1162,8 @@ const activeOrders = new Map();
             contractType: 'MOCK_DUAL_HTLC'
           };
           
-          activeOrders.set(orderId, orderData);
-          
+          storeActiveOrder(orderId, orderData);
+
           return res.json({
             success: true,
             orderId,
@@ -1166,7 +1234,7 @@ const activeOrders = new Map();
           }
         };
         
-        activeOrders.set(orderId, orderData);
+        storeActiveOrder(orderId, orderData);
 
         res.json({
           success: true,
@@ -1747,7 +1815,7 @@ const activeOrders = new Map();
           created: new Date().toISOString(),
           networkMode: requestNetwork,
         };
-        activeOrders.set(orderId, storedOrder);
+        storeActiveOrder(orderId, storedOrder);
       }
       storedOrder.xlmReceivedAt = storedOrder.xlmReceivedAt ?? Date.now();
       storedOrder.stellarTxHash = stellarTxHash;
@@ -2267,87 +2335,55 @@ const activeOrders = new Map();
     console.log('💡 To authorize relayer: POST /api/admin/authorize-relayer');
     console.log('⚠️  Skipping authorization check to reduce API rate limit issues');
     
-    // Monitor incoming ETH transfers to relayer using simpler approach
+    // Monitor incoming ETH transfers to relayer — only while an order
+    // is waiting for the user's deposit. Uses prefetched block txs
+    // (no per-tx getTransaction) and skips RPC entirely when idle.
     let lastProcessedBlock = await provider.getBlockNumber();
-    
-    setInterval(async () => {
-      try {
-        // Add retry logic for block number
-        let currentBlock;
-        for (let retry = 0; retry < 3; retry++) {
-          try {
-            currentBlock = await provider.getBlockNumber();
-            break;
-          } catch (error: any) {
-            if (error?.code === 429 && retry < 2) {
-              console.log(`⏳ Rate limited getting block number, waiting ${(retry + 1) * 2}s...`);
-              await new Promise(resolve => setTimeout(resolve, (retry + 1) * 2000));
-              continue;
-            }
-            throw error;
-          }
-        }
-        
-        // Check new blocks for transfers
-        for (let blockNum = lastProcessedBlock + 1; blockNum <= currentBlock; blockNum++) {
-          const block = await provider.getBlock(blockNum, true);
-          if (!block?.transactions) continue;
-          
-          // Check each transaction
-          for (const txHash of block.transactions) {
-            // Add retry logic for API calls
-            let tx;
-            for (let retry = 0; retry < 3; retry++) {
-              try {
-                tx = await provider.getTransaction(txHash);
-                break;
-              } catch (error: any) {
-                if (error?.code === 429 && retry < 2) {
-                  console.log(`⏳ Rate limited, retrying in ${(retry + 1) * 2}s...`);
-                  await new Promise(resolve => setTimeout(resolve, (retry + 1) * 2000));
-                  continue;
-                }
-                throw error;
-              }
-            }
-            if (!tx) continue;
-            
-            // Check if it's ETH transfer to relayer
-            if (tx.to === relayerAddress && tx.value && tx.value > 0n) {
-              console.log('💰 Incoming ETH transfer detected:', {
-                from: tx.from,
-                value: ethers.formatEther(tx.value),
-                hash: tx.hash
-              });
-              
-              // Find matching order
-              for (const [orderId, orderData] of activeOrders.entries()) {
-                if (orderData.ethAddress === tx.from && orderData.status === 'pending_relayer_escrow') {
-                  console.log(`✅ Matched transfer to order ${orderId}`);
-                  
-                  // Create escrow on behalf of user
-                  await createEscrowForOrder(orderData, orderId, escrowFactoryContract, relayerWallet);
-                  break;
-                }
-              }
+
+    chainPollers.push(
+      startAdaptivePoll({
+      label: 'eth-incoming',
+      activeIntervalMs: RELAYER_CONFIG.activePollIntervalMs,
+      idleIntervalMs: RELAYER_CONFIG.idlePollIntervalMs,
+      isActive: () => hasPendingRelayerEscrow(activeOrders),
+      isAttentive: () => hasRecentVisitor(),
+      tick: async () => {
+        const { payments, cursor } = await fetchIncomingEthPayments(
+          provider,
+          relayerAddress,
+          lastProcessedBlock
+        );
+        lastProcessedBlock = cursor;
+
+        for (const payment of payments) {
+          console.log('💰 Incoming ETH transfer detected:', {
+            from: payment.from,
+            value: ethers.formatEther(payment.value),
+            hash: payment.hash,
+          });
+
+          for (const [orderId, orderData] of activeOrders.entries()) {
+            if (orderData.ethAddress === payment.from && orderData.status === 'pending_relayer_escrow') {
+              console.log(`✅ Matched transfer to order ${orderId}`);
+              await createEscrowForOrder(orderData, orderId, escrowFactoryContract, relayerWallet);
+              break;
             }
           }
         }
-        
-        lastProcessedBlock = currentBlock;
-      } catch (error) {
-        console.error('❌ Error monitoring transfers:', error);
-      }
-    }, RELAYER_CONFIG.pollInterval); // Use configurable poll interval (15s default)
-    
-    // XLM Payment Monitoring for XLM→ETH orders
+      },
+    }));
+
+    // XLM Payment Monitoring for XLM→ETH orders — only while awaiting payment.
     console.log('🌟 Starting Stellar payment monitoring...');
     let lastProcessedStellarLedger = 0;
-    
-    setInterval(async () => {
-      try {
-        console.log('🔍 Checking for XLM payments to relayer...');
-        
+
+    chainPollers.push(startAdaptivePoll({
+      label: 'stellar-incoming',
+      activeIntervalMs: RELAYER_CONFIG.activePollIntervalMs,
+      idleIntervalMs: RELAYER_CONFIG.idlePollIntervalMs,
+      isActive: () => hasAwaitingXlmPayment(activeOrders),
+      isAttentive: () => hasRecentVisitor(),
+      tick: async () => {
         const networkMode = RELAYER_CONFIG.ethereum.network === 'mainnet' ? 'mainnet' : 'testnet';
         const stellarConfig = NETWORK_CONFIG[networkMode].stellar;
         const { Horizon } = await import('@stellar/stellar-sdk');
@@ -2355,20 +2391,18 @@ const activeOrders = new Map();
         
         const relayerStellarPublic = process.env.RELAYER_STELLAR_PUBLIC || 'YOUR_STELLAR_PUBLIC_KEY_HERE';
         
-        // Get current ledger
         const ledgerResponse = await server.ledgers().order('desc').limit(1).call();
         const currentLedger = parseInt(ledgerResponse.records[0].sequence.toString());
         
         if (lastProcessedStellarLedger === 0) {
-          lastProcessedStellarLedger = currentLedger - 10; // Start from 10 ledgers ago
+          lastProcessedStellarLedger = currentLedger - 10;
           console.log('🌟 Stellar monitoring initialized, starting from ledger:', lastProcessedStellarLedger);
           return;
         }
         
-        // Check payments to relayer since last processed ledger
         const paymentsResponse = await server.payments()
           .forAccount(relayerStellarPublic)
-          .cursor((lastProcessedStellarLedger * 4294967296).toString()) // Convert ledger to cursor
+          .cursor((lastProcessedStellarLedger * 4294967296).toString())
           .order('asc')
           .limit(50)
           .call();
@@ -2381,7 +2415,6 @@ const activeOrders = new Map();
               txHash: payment.transaction_hash
             });
             
-            // Get transaction details to extract memo
             const txResponse = await server.transactions().transaction(payment.transaction_hash).call();
             const memo = txResponse.memo;
             
@@ -2389,19 +2422,15 @@ const activeOrders = new Map();
               const orderPrefix = memo.replace('XLM-ETH-', '');
               console.log('🔍 Found XLM→ETH payment with memo:', memo, 'Order prefix:', orderPrefix);
               
-              // Find matching pending order
               for (const [orderId, orderData] of activeOrders.entries()) {
                 if (orderId.includes(orderPrefix) && orderData.status === 'awaiting_xlm_payment') {
                   console.log('✅ Matched XLM payment to order:', orderId);
                   
-                  // Verify payment amount matches expected
                   const expectedXLM = parseFloat(orderData.stellar.amount);
                   const receivedXLM = parseFloat(payment.amount);
                   
-                  if (Math.abs(receivedXLM - expectedXLM) < 0.001) { // 0.001 XLM tolerance
+                  if (Math.abs(receivedXLM - expectedXLM) < 0.001) {
                     console.log('💰 XLM amount verified:', receivedXLM, '≈', expectedXLM);
-                    
-                    // Create ETH HTLC now that XLM is received
                     await createETHHTLCForOrder(orderData, orderId);
                   } else {
                     console.warn('⚠️ XLM amount mismatch:', receivedXLM, 'vs expected:', expectedXLM);
@@ -2414,11 +2443,8 @@ const activeOrders = new Map();
         }
         
         lastProcessedStellarLedger = currentLedger;
-        
-      } catch (stellarError) {
-        console.error('❌ Stellar monitoring error:', stellarError);
-      }
-    }, 15000); // Check every 15 seconds
+      },
+    }));
     
     // Function to create ETH HTLC after XLM payment received
     async function createETHHTLCForOrder(orderData: any, orderId: string) {
@@ -2738,11 +2764,17 @@ const activeOrders = new Map();
     }
 
     if (escrowFactoryEventBindings.length > 0) {
-      await startContractEventPoller(
+      escrowFactoryPoller = await startContractEventPoller(
         escrowFactoryContract,
         provider,
         escrowFactoryEventBindings,
-        { label: 'escrow-factory', intervalMs: 5_000 }
+        {
+          label: 'escrow-factory',
+          intervalMs: RELAYER_CONFIG.activePollIntervalMs,
+          idleIntervalMs: RELAYER_CONFIG.idlePollIntervalMs,
+          isActive: () => hasActiveBridgeOrders(activeOrders),
+          isAttentive: () => hasRecentVisitor(),
+        }
       );
     }
 

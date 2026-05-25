@@ -14,8 +14,8 @@
  * + re-entrancy + chunking logic each time.
  */
 
-import type { Contract, EventLog } from 'ethers';
-import { ethers } from 'ethers';
+import type { Contract, EventLog, JsonRpcProvider } from 'ethers';
+import { startAdaptivePoll, type AdaptivePollHandle } from './adaptive-poll.js';
 
 export interface ContractEventBinding {
   /** Event name as declared in the contract ABI (e.g. "OrderCreated"). */
@@ -28,8 +28,18 @@ export interface ContractEventBinding {
 }
 
 export interface ContractEventPollerOptions {
-  /** How often to ask the RPC for new blocks. Defaults to 5s. */
+  /** How often to ask the RPC for new blocks when orders are active. Defaults to 15s. */
   intervalMs?: number;
+  /** Delay between ticks when idle (no active orders). Defaults to 120s. */
+  idleIntervalMs?: number;
+  /**
+   * When provided and returns false, the tick is skipped (zero RPC) until the next re-check.
+   * The loop still wakes on idleIntervalMs so monitoring resumes
+   * automatically once orders appear.
+   */
+  isActive?: () => boolean;
+  /** When true, re-check on activeIntervalMs even if `isActive()` is false. */
+  isAttentive?: () => boolean;
   /**
    * Hard cap on a single `getLogs` window. Public RPCs reject huge
    * ranges; if we ever fall behind by more than this, we walk
@@ -47,22 +57,27 @@ export interface ContractEventPollerOptions {
 
 export interface ContractEventPollerHandle {
   stop(): void;
+  wake(): void;
   /** Cursor block — last block we've scanned through (inclusive). */
   cursor(): number;
 }
 
-const DEFAULT_INTERVAL_MS = 5_000;
+const DEFAULT_INTERVAL_MS = 15_000;
+const DEFAULT_IDLE_INTERVAL_MS = 120_000;
 const DEFAULT_MAX_WINDOW = 500;
 
 export async function startContractEventPoller(
   contract: Contract,
-  provider: ethers.JsonRpcProvider,
+  provider: JsonRpcProvider,
   bindings: ContractEventBinding[],
   options: ContractEventPollerOptions = {}
 ): Promise<ContractEventPollerHandle> {
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
+  const idleIntervalMs = options.idleIntervalMs ?? DEFAULT_IDLE_INTERVAL_MS;
   const maxWindow = options.maxBlockWindow ?? DEFAULT_MAX_WINDOW;
   const label = options.label ?? 'contract-poller';
+  const isActive = options.isActive ?? (() => true);
+  const isAttentive = options.isAttentive ?? (() => true);
 
   let lastProcessed = options.startBlock ?? (await provider.getBlockNumber());
   let isPolling = false;
@@ -113,11 +128,22 @@ export async function startContractEventPoller(
     }
   };
 
-  const handle = setInterval(() => { void tick(); }, intervalMs);
-  console.log(`[${label}] polling every ${intervalMs / 1000}s from block ${lastProcessed} for ${bindings.length} event(s)`);
+  const pollHandle = startAdaptivePoll({
+    label,
+    activeIntervalMs: intervalMs,
+    idleIntervalMs,
+    isActive,
+    isAttentive,
+    tick,
+  });
+
+  console.log(
+    `[${label}] from block ${lastProcessed}, ${bindings.length} event(s) — active ${intervalMs / 1000}s / idle ${idleIntervalMs / 1000}s`
+  );
 
   return {
-    stop() { clearInterval(handle); },
+    stop() { pollHandle.stop(); },
+    wake() { pollHandle.wake(); },
     cursor() { return lastProcessed; },
   };
 }
