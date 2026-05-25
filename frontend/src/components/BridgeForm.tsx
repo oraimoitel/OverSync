@@ -8,6 +8,7 @@ import {
 } from '@stellar/stellar-sdk';
 import { isTestnet, getCurrentNetwork } from '../config/networks';
 import { parseHtlcReceipt } from '../lib/parseHtlcReceipt';
+import { sanitizeAmountInput } from '../lib/sanitizeAmountInput';
 import { ArrowDownUp, CheckCircle2, Loader2, RefreshCw, Settings2 } from 'lucide-react';
 
 // Web3 imports for contract interaction
@@ -1204,14 +1205,16 @@ export default function BridgeForm({ ethAddress, stellarAddress, signStellarTran
               <div className="flex items-center gap-2">
                 <input
                   type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={amount}
                   onChange={(e) => {
-                    console.log('⌨️ Input changed:', {
-                      oldValue: amount,
-                      newValue: e.target.value,
-                      eventType: 'manual_input'
-                    });
-                    setAmount(e.target.value);
+                    setAmount(sanitizeAmountInput(e.target.value, fromToken.decimals));
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text');
+                    setAmount(sanitizeAmountInput(pasted, fromToken.decimals));
                   }}
                   placeholder="0.0"
                   className="min-w-0 flex-1 bg-transparent text-2xl font-semibold tracking-tight text-white outline-none placeholder:text-slate-500"
