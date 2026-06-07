@@ -31,6 +31,10 @@ SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
 ETHERSCAN_API_KEY=<key>
 ```
 
+Testnet asset identifier mappings (native ETH ↔ XLM, Sepolia USDC ↔ Stellar USDC)
+are centralized in `packages/sdk/src/assets/index.ts` and exported from
+`@oversync/sdk`.
+
 Backend services resolve the EVM RPC in this order: explicit
 `SEPOLIA_RPC_URL` / `MAINNET_RPC_URL`, then `INFURA_API_KEY`, then a
 public fallback. Production (DigitalOcean) should use Infura — keep the
