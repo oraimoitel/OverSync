@@ -51,6 +51,22 @@ describe("parseCorsOrigins", () => {
   it("handles single wildcard", () => {
     expect(parseCorsOrigins("*")).toEqual(["*"]);
   });
+
+  it("throws for malformed single origin that is not a URL", () => {
+    expect(() => parseCorsOrigins("not-a-url")).toThrow("Invalid CORS origin");
+  });
+
+  it("throws when a comma-separated list contains an invalid origin", () => {
+    expect(() =>
+      parseCorsOrigins("https://valid.com,not-a-url")
+    ).toThrow("Invalid CORS origin");
+  });
+
+  it("throws when all entries are invalid", () => {
+    expect(() => parseCorsOrigins("bad1,bad2")).toThrow(
+      "Invalid CORS origin"
+    );
+  });
 });
 
 describe("isOriginAllowed", () => {

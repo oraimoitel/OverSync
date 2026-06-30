@@ -4,10 +4,25 @@ import type { RequestHandler } from "express";
 export function parseCorsOrigins(raw: string): string[] {
   const trimmed = raw.trim();
   if (!trimmed) return [];
-  return trimmed
+  const origins = trimmed
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+
+  for (const origin of origins) {
+    if (origin !== "*") {
+      try {
+        new URL(origin);
+      } catch {
+        throw new Error(
+          `Invalid CORS origin: "${origin}". ` +
+            'Each origin must be a valid URL (e.g. "https://example.com") or "*" for all origins.'
+        );
+      }
+    }
+  }
+
+  return origins;
 }
 
 export function isOriginAllowed(
